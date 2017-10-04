@@ -21,9 +21,7 @@ from ortools.linear_solver import pywraplp
 
 def runProblem():
     #print sites
-    #print sites[:,[0,3]]
-    print sites[:,[1,2]]
-    print np.shape(sites)
+    #print np.shape(sites)
     p = 1
     computeCoverageMatrix(p, SD)
     
@@ -42,11 +40,19 @@ def computeCoverageMatrix(p, SD):
     #B = [xyPointArray[j][:] for j in facilityIDs]
     A = xyPointArray
     B = A
+    #print A
     
     # Compute the distance matrix, using the squared distance
     sqDistMatrix = cdist(A, B,'sqeuclidean')
     print 'Max Point-to-Point Distance = %f' % np.sqrt(np.amax(sqDistMatrix))
     print 'Mean Point-to-Point Distance = %f' % np.sqrt(np.mean(sqDistMatrix))
+    print np.shape(sqDistMatrix)
+    
+    distances = np.unique(sqDistMatrix)
+    print np.shape(distances)
+    print distances
+    print distances[1]
+    print distances[len(distances)-1]
     
 #     if (p == -2):
 #         p = 3
