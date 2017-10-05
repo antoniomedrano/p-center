@@ -19,20 +19,30 @@ from scipy.sparse import csc_matrix
 from scipy.spatial.distance import cdist
 from ortools.linear_solver import pywraplp
 
-def runProblem():
+def RunLSCPCppStyleAPI(optimization_problem_type, p, SD):
+    
+    """ Example of simple MCLP program with the C++ style API."""
+    solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
+    
+    
     #print sites
     #print np.shape(sites)
-    p = 1
     computeCoverageMatrix(p, SD)
+    
     
 def computeCoverageMatrix(p, SD):
         
     #declare a couple variables
+    global distances
+    global numDemands
+    global numSites
     global Nrows
     global Ncols
     global Nsize
-    global facilityIDs
-    global numSites
+    
+    # for now, all demands are also sites
+    allFD3 = True
+    facilityIDs = range(len(sites))
     
     # Convert Coordinates from Lat/Long to CONUS EqD Projection
     xyPointArray = sites[:,[1,2]]
@@ -49,27 +59,27 @@ def computeCoverageMatrix(p, SD):
     print np.shape(sqDistMatrix)
     
     distances = np.unique(sqDistMatrix)
-    print np.shape(distances)
-    print distances
-    print distances[1]
-    print distances[len(distances)-1]
+    print np.size(distances)
     
-#     if (p == -2):
-#         p = 3
-#     if (SD == -2):
-#         SD = np.floor(np.sqrt(np.mean(sqDistMatrix))/13750.0)*1000
-#
-#     SDsquared = SD*SD
-#     TwoSDsquared = 4*SDsquared
-#
-#     # Determine neighborhood of demands within SD of sites
-#     C = (sqDistMatrix <= SDsquared).astype(int)
-#
-#     # Determine neighborhood of sites within SD of sites
-#     if allFD3 == True:
-#         SDist = C
-#     else:
-#         SDist = (cdist(B, B,'sqeuclidean') <= SDsquared).astype(int)
+    colmax = np.amax(sqDistMatrix,0)
+    minmax = np.amin(colmax)
+    
+    print colmax
+    print minmax
+    
+    print np.where(distances==minmax)
+    
+    SDsquared = SD*SD
+    TwoSDsquared = 4*SDsquared
+
+    # Determine neighborhood of demands within SD of sites
+    C = (sqDistMatrix <= SDsquared).astype(int)
+
+    # Determine neighborhood of sites within SD of sites
+    if allFD3 == True:
+        SDist = C
+    else:
+        SDist = (cdist(B, B,'sqeuclidean') <= SDsquared).astype(int)
 #
 #     start_time = time.time()
 #     C, columns = dominationTrim(C, SDist)
@@ -80,64 +90,57 @@ def computeCoverageMatrix(p, SD):
 #     facilityIDs = [facilityIDs[j] for j in cols]
 #     numSites = len(facilityIDs)
 #
-#     # Convert coverage to sparse matrix
-#     Nrows,Ncols = np.nonzero(C.astype(bool))
-#     Nsize = len(Nrows)
+    # Convert coverage to sparse matrix
+    Nrows,Ncols = np.nonzero(C.astype(bool))
+    Nsize = len(Nrows)
 #
 #     return [p, SD]
     return 0
 
+def BuildModel(solver, X, Y, p):
+    
+    infinity = solver.infinity()
+    
+    # DECLARE CONSTRAINTS:
+    # declare demand coverage constraints (binary integer: 1 if UNCOVERED, 0 if COVERED)
+    c1 = [None]*numDemands
+    
+    
+    # declare the objective
+    objective = solver.Objective()
+    objective.SetMinimization()
+    
+    # Add potential facility sites to the p constraint
+    for j in range(numDemands):
+        # initialize the X variables as Binary Integer (Boolean) variables
+        name = "X,%d" % facilityIDs[j]
+        X[j] = solver.BoolVar(name)
+        c2.SetCoefficient(X[j],1)
+    
+    # if facility is fixed into the solution, add a constraint to make it so
+    for k in range(numForced):
+          c3[k] = solver.Constraint(1,1)
+          c3[k].SetCoefficient(X[forcedFacilities[k]],1)
+    
+    # add demands to the objective and coverage constraints
+    for i in range(numDemands):
+        name = "Y,%d" % demandIDs[i]
+        # initialize the Y variables as Binary Integer (Boolean) variables
+        Y[i] = solver.BoolVar(name)
+        # Set the Objective Coefficients for the population * Demand Variable (Yi)
+        objective.SetCoefficient(Y[i],demandPop[i])
+        # Covering constraints
+        c1[i] = solver.Constraint(1, solver.infinity())
+        c1[i].SetCoefficient(Y[i],1)
 
-# def computeCoverageMatrix(p, SD):
-#
-#     #declare a couple variables
-#     global Nrows
-#     global Ncols
-#     global Nsize
-#     global facilityIDs
-#     global numSites
-#
-#     # Convert Coordinates from Lat/Long to CONUS EqD Projection
-#     xyPointArray = GISOps.GetCONUSeqDprojCoords(js)
-#     A = [xyPointArray[i][:] for i in demandIDs]
-#     B = [xyPointArray[j][:] for j in facilityIDs]
-#
-#     # Compute the distance matrix, using the squared distance
-#     sqDistMatrix = cdist(A, B,'sqeuclidean')
-#     print 'Max Point-to-Point Distance = %f' % (np.sqrt(np.amax(sqDistMatrix))/1000.0)
-#     print 'Mean Point-to-Point Distance = %f' % (np.sqrt(np.mean(sqDistMatrix))/1000.0)
-#
-#     if (p == -2):
-#         p = 3
-#     if (SD == -2):
-#         SD = np.floor(np.sqrt(np.mean(sqDistMatrix))/13750.0)*1000
-#
-#     SDsquared = SD*SD
-#     TwoSDsquared = 4*SDsquared
-#
-#     # Determine neighborhood of demands within SD of sites
-#     C = (sqDistMatrix <= SDsquared).astype(int)
-#
-#     # Determine neighborhood of sites within SD of sites
-#     if allFD3 == True:
-#         SDist = C
-#     else:
-#         SDist = (cdist(B, B,'sqeuclidean') <= SDsquared).astype(int)
-#
-#     start_time = time.time()
-#     C, columns = dominationTrim(C, SDist)
-#     print 'Domination time = %f' % (time.time()-start_time)
-#
-#     # shorten the facility data sets
-#     cols = np.nonzero(columns)[0]
-#     facilityIDs = [facilityIDs[j] for j in cols]
-#     numSites = len(facilityIDs)
-#
-#     # Convert coverage to sparse matrix
-#     Nrows,Ncols = np.nonzero(C.astype(bool))
-#     Nsize = len(Nrows)
-#
-#     return [p, SD]
+    # add facility coverages to the coverage constraints
+    for k in range(Nsize):
+        c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
+    
+    print 'Number of variables = %d' % solver.NumVariables()
+    print 'Number of constraints = %d' % solver.NumConstraints()
+    print
+    return 0
     
 
 def read_problem(file):
@@ -177,8 +180,29 @@ def read_problem(file):
         print 'Finished Reading File!'
 
 
+def Announce(solver, api_type):
+    print ('---- Integer programming example with ' + solver + ' (' +
+        api_type + ') -----')
+
+def RunSCIPPMedianExampleCppStyleAPI(p, SD):
+    if hasattr(pywraplp.Solver, 'SCIP_MIXED_INTEGER_PROGRAMMING'):
+        Announce('SCIP', 'C++ style API')
+        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, p, SD)
+
+def RunCBCMCLPexampleCppStyleAPI(p, SD):
+    if hasattr(pywraplp.Solver, 'CBC_MIXED_INTEGER_PROGRAMMING'):
+        Announce('CBC', 'C++ style API')
+        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, p, SD)
+
+def RunBOPMCLPexampleCppStyleAPI(p, SD):
+    if hasattr(pywraplp.Solver, 'BOP_INTEGER_PROGRAMMING'):
+        Announce('BOP', 'C++ style API')
+        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, p, SD)
+
+
 def main(unused_argv):
-    runProblem()
+    p = 1
+    RunCBCMCLPexampleCppStyleAPI(p, SD)
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
