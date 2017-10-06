@@ -14,23 +14,37 @@
 # Author: Antonio Medrano
 
 import sys
+import time
 import numpy as np
 from scipy.sparse import csc_matrix
 from scipy.spatial.distance import cdist
 from ortools.linear_solver import pywraplp
 
-def RunLSCPCppStyleAPI(optimization_problem_type, p, SD):
+def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     
     """ Example of simple MCLP program with the C++ style API."""
     solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
     
+    # Create a global version of:
+    # Facility Site Variable X
+    X = [None] * numSites
     
     #print sites
     #print np.shape(sites)
-    computeCoverageMatrix(p, SD)
+    start_time = time.time()
+    
+    computeCoverageMatrix(SD)
+    BuildModel(solver, X)
+    SolveModel(solver)
+    
+    total_time = time.time()-start_time
+    p = solver.Objective().Value()
+    
+    displaySolution(X, p, total_time)
     
     
-def computeCoverageMatrix(p, SD):
+    
+def computeCoverageMatrix(SD):
         
     #declare a couple variables
     global distances
@@ -39,12 +53,15 @@ def computeCoverageMatrix(p, SD):
     global Nrows
     global Ncols
     global Nsize
+    global facilityIDs
     
     # for now, all demands are also sites
     allFD3 = True
-    facilityIDs = range(len(sites))
     
-    # Convert Coordinates from Lat/Long to CONUS EqD Projection
+    # Pull out just the site/demand IDs from the data
+    facilityIDs = sites[:,0]
+    
+    # Pull out just the coordinates from the data
     xyPointArray = sites[:,[1,2]]
     #A = [xyPointArray[i][:] for i in demandIDs]
     #B = [xyPointArray[j][:] for j in facilityIDs]
@@ -64,10 +81,14 @@ def computeCoverageMatrix(p, SD):
     colmax = np.amax(sqDistMatrix,0)
     minmax = np.amin(colmax)
     
-    print colmax
+    # print colmax
     print minmax
     
+    print "The element in the distances set of the minmax is"
     print np.where(distances==minmax)
+    
+    print "The site of the minmax is"
+    print np.where(colmax==minmax)[0]+1
     
     SDsquared = SD*SD
     TwoSDsquared = 4*SDsquared
@@ -80,6 +101,7 @@ def computeCoverageMatrix(p, SD):
         SDist = C
     else:
         SDist = (cdist(B, B,'sqeuclidean') <= SDsquared).astype(int)
+        
 #
 #     start_time = time.time()
 #     C, columns = dominationTrim(C, SDist)
@@ -94,10 +116,10 @@ def computeCoverageMatrix(p, SD):
     Nrows,Ncols = np.nonzero(C.astype(bool))
     Nsize = len(Nrows)
 #
-#     return [p, SD]
+#     return [SD]
     return 0
 
-def BuildModel(solver, X, Y, p):
+def BuildModel(solver, X):
     
     infinity = solver.infinity()
     
@@ -105,17 +127,16 @@ def BuildModel(solver, X, Y, p):
     # declare demand coverage constraints (binary integer: 1 if UNCOVERED, 0 if COVERED)
     c1 = [None]*numDemands
     
-    
     # declare the objective
     objective = solver.Objective()
     objective.SetMinimization()
     
-    # Add potential facility sites to the p constraint
-    for j in range(numDemands):
-        # initialize the X variables as Binary Integer (Boolean) variables
+    # initialize the X variables as Binary Integer (Boolean) variables
+    for j in range(numSites):
         name = "X,%d" % facilityIDs[j]
         X[j] = solver.BoolVar(name)
-        c2.SetCoefficient(X[j],1)
+        # add the site location variables to the objective function
+        objective.SetCoefficient(X[j],1)
     
     # if facility is fixed into the solution, add a constraint to make it so
     for k in range(numForced):
@@ -124,14 +145,8 @@ def BuildModel(solver, X, Y, p):
     
     # add demands to the objective and coverage constraints
     for i in range(numDemands):
-        name = "Y,%d" % demandIDs[i]
-        # initialize the Y variables as Binary Integer (Boolean) variables
-        Y[i] = solver.BoolVar(name)
-        # Set the Objective Coefficients for the population * Demand Variable (Yi)
-        objective.SetCoefficient(Y[i],demandPop[i])
         # Covering constraints
         c1[i] = solver.Constraint(1, solver.infinity())
-        c1[i].SetCoefficient(Y[i],1)
 
     # add facility coverages to the coverage constraints
     for k in range(Nsize):
@@ -141,16 +156,43 @@ def BuildModel(solver, X, Y, p):
     print 'Number of constraints = %d' % solver.NumConstraints()
     print
     return 0
+
+def SolveModel(solver):
+    """Solve the problem and print the solution."""
+    result_status = solver.Solve()
+
+    # The problem has an optimal solution.
+    assert result_status == pywraplp.Solver.OPTIMAL, "The problem does not have an optimal solution!"
+
+    # The solution looks legit (when using solvers others than
+    # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
+    assert solver.VerifySolution(1e-7, True)
     
+def displaySolution(X, p, total_time):
+
+    print 'Total problem solved in %f seconds' % total_time
+    print
+    # The objective value of the solution.
+    print 'p = %d' % p
+    print 'SD = %f' % SD
+    # print the selected sites
+    print
+    count = -1
+    for j in range(numSites):
+        if (X[j].SolutionValue() == 1.0):
+            print "Site selected %d" % int(facilityIDs[j])
 
 def read_problem(file):
     global numSites
+    global numDemands
     global sites
+    global numForced
     
     print 'readFile({0})'.format(file)
     
     lineCount = 0
     i = 0
+    numForced = 0
     
     # Use With Statement to automatically close the 'read file' when finished.
     with open(file,'r') as f:
@@ -165,6 +207,7 @@ def read_problem(file):
             if (lineCount == 0):
                 # Set the number of sites from the file
                 numSites = int(line)
+                numDemands = numSites
                 
                 # Create and instantiate the array 'sites'
                 #sites = [[None for k in range(4)] for j in range(numSites)]
@@ -184,25 +227,26 @@ def Announce(solver, api_type):
     print ('---- Integer programming example with ' + solver + ' (' +
         api_type + ') -----')
 
-def RunSCIPPMedianExampleCppStyleAPI(p, SD):
+def RunSCIP_LSCPExampleCppStyleAPI(SD):
     if hasattr(pywraplp.Solver, 'SCIP_MIXED_INTEGER_PROGRAMMING'):
         Announce('SCIP', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, p, SD)
+        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, SD)
 
-def RunCBCMCLPexampleCppStyleAPI(p, SD):
+def RunCBC_LSCPexampleCppStyleAPI(SD):
     if hasattr(pywraplp.Solver, 'CBC_MIXED_INTEGER_PROGRAMMING'):
         Announce('CBC', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, p, SD)
+        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, SD)
 
-def RunBOPMCLPexampleCppStyleAPI(p, SD):
+def RunBOP_LSCPexampleCppStyleAPI(SD):
     if hasattr(pywraplp.Solver, 'BOP_INTEGER_PROGRAMMING'):
         Announce('BOP', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, p, SD)
+        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, SD)
 
 
 def main(unused_argv):
-    p = 1
-    RunCBCMCLPexampleCppStyleAPI(p, SD)
+    RunCBC_LSCPexampleCppStyleAPI(SD)
+    #RunSCIP_LSCPexampleCppStyleAPI(SD)
+    #RunBOP_LSCPexampleCppStyleAPI(SD)
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
@@ -214,7 +258,7 @@ if __name__ == '__main__':
     read_problem(file)
     main(None)
   elif len(sys.argv) > 1 and len(sys.argv) <= 2:
-    SD = long(sys.argv[1])
+    SD = float(sys.argv[1])
     file = r'./data/swain.txt'
     print "Problem instance from: ", file
     read_problem(file)
