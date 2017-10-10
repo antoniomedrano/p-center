@@ -17,6 +17,7 @@ import sys
 import time
 import numpy as np
 from scipy.sparse import csc_matrix
+from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
 from ortools.linear_solver import pywraplp
 
@@ -104,15 +105,17 @@ def computeCoverageMatrix(SD):
         
 
     start_time = time.time()
-    C, columns = dominationTrim(C, SDist)
+    C, col_keeps, row_keeps = dominationTrim(C, SDist)
     print 'Domination time = %f' % (time.time()-start_time)
 
-    print np.sum(C, axis=1)
-
     # shorten the facility data sets
-    cols = np.nonzero(columns)[0]
+    cols = np.nonzero(col_keeps)[0]
+    rows = np.nonzero(row_keeps)[0]
     facilityIDs = [facilityIDs[j] for j in cols]
     numSites = len(facilityIDs)
+    print numSites
+    numDemands = len(rows)
+    print numDemands
 
     # Convert coverage to sparse matrix
     Nrows,Ncols = np.nonzero(C.astype(bool))
@@ -125,7 +128,10 @@ def computeCoverageMatrix(SD):
 def dominationTrim(A, SDist):
     
     rows,cols = A.shape
+    r_indices = np.array(range(rows))
+    c_indices = np.array(range(cols))
     c_keeps = np.ones(cols)
+    r_keeps = np.ones(rows)
     
     # lower triangle of coverage matrix for checking only columns within SD
     # Explanation:
@@ -133,7 +139,8 @@ def dominationTrim(A, SDist):
     # using tril means you don't check backwards
     # NOTE: THIS WORKS FOR ONLY SQUARE COVERAGE MATRICES WHERE ALL DEMANDS ARE SITES
     # UPDATE WITH SITE vs. SITE COVERAGE MATRIX FOR OTHER CASES
-    B = np.tril(SDist,-1)
+    L = np.tril(SDist,-1)   # lower triangle matrix
+    U = np.triu(SDist,1)    # upper triangle matrix
     
     # start_time = time.time()
     # create a list of sets containing the indices of non-zero elements of each column
@@ -141,12 +148,13 @@ def dominationTrim(A, SDist):
     D = [set(C.indices[C.indptr[i]:C.indptr[i+1]]) for i in range(len(C.indptr)-1)]
     # print 'Matrix to List of Sets CSC Time = %f' % (time.time()-start_time)
     
+    # Column domination
     # find subsets, ignoring columns that are known to already be subsets
     for i in range(cols):
         if c_keeps[i]==0:
             continue
         col1 = D[i]
-        for j in np.nonzero(B[:,i])[0]:
+        for j in np.nonzero(L[:,i])[0]:
             # I tried `if keeps[j]==false: continue` here, but that was slower
             # if keeps[j]==False: continue
             col2 = D[j]
@@ -155,8 +163,40 @@ def dominationTrim(A, SDist):
             elif col1.issubset(col2):
                 c_keeps[i] = 0
                 break
+    E = A[:,c_keeps.astype(bool)]   # delete columns from coverage matrix
+    #L = L[:,c_keeps.astype(bool)]   # delete colums from lower triangle matrix
+    U = U[:,c_keeps.astype(bool)]   # delete colums from upper triangle matrix
+    r_indices = r_indices[c_keeps.astype(bool)]
     
-    return A[:,c_keeps.astype(bool)], c_keeps
+    # Row Domination
+    # find subsets, ignoring rows that are known to already be subsets
+    # create a list of sets containing the indices of non-zero elements of each column
+    R = csr_matrix(E)
+    S = [set(R.indices[R.indptr[i]:R.indptr[i+1]]) for i in range(len(R.indptr)-1)]
+    
+    for i in range(rows):
+        if r_keeps[i]==0:
+            continue
+        row1 = S[i]
+        for j in np.nonzero(U[i,:])[0]:
+            # I tried `if keeps[j]==false: continue` here, but that was slower
+            # if keeps[j]==False: continue
+            col2 = S[j]
+            if col2.issubset(col1):
+                r_keeps[i] = 0
+            elif col1.issubset(col2):
+                r_keeps[j] = 0
+                break
+                
+    T = E[r_keeps.astype(bool),:]   # delete rows from coverage matrix
+    
+    rowSumIsOne = np.where(np.sum(T, axis=1)==1)[0]
+    nonZeroCols = np.where(T[rowSumIsOne,:])[1]
+    print rowSumIsOne
+    print nonZeroCols
+    print np.unique(nonZeroCols)
+    
+    return T, c_keeps, r_keeps
     
 
 def BuildModel(solver, X):
