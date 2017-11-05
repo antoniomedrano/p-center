@@ -44,7 +44,6 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     displaySolution(X, p, total_time)
     
     
-    
 def computeCoverageMatrix(SD):
         
     #declare a couple variables
@@ -83,7 +82,7 @@ def computeCoverageMatrix(SD):
     minmax = np.amin(colmax)
     
     # print colmax
-    print minmax
+    print minmax**(0.5)
     
     print "The element in the distances set of the minmax is"
     print np.where(distances==minmax)
@@ -173,10 +172,12 @@ def read_problem(file):
     global numDemands
     global sites
         
-    if (file[-3:].lower() == "dat"):
-        sites = readDataFiles.readDat(file)
-    else:
-        sys.exit("invalid file type")
+    try:
+        if (file[-3:].lower() == "dat"):
+            sites = readDataFiles.readDat(file)
+    except IOError:
+        print 'Error reading file'
+        raise
         
     numSites = sites.shape[0]    
     numDemands = numSites
