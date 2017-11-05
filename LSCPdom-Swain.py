@@ -25,15 +25,18 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     """ Example of simple MCLP program with the C++ style API."""
     solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
     
-    # Create a global version of:
-    # Facility Site Variable X
-    X = [None] * numSites
+
     
     #print sites
     #print np.shape(sites)
     start_time = time.time()
     
     computeCoverageMatrix(SD)
+
+    # Create a global version of:
+    # Facility Site Variable X
+    X = [None] * numSites
+    
     BuildModel(solver, X)
     SolveModel(solver)
     
@@ -95,7 +98,7 @@ def computeCoverageMatrix(SD):
 
     # Determine neighborhood of demands within SD of sites
     C = (sqDistMatrix <= SDsquared).astype(int)
-
+     
     # Determine neighborhood of sites within SD of sites
     if allFD3 == True:
         SDist = C
@@ -106,8 +109,6 @@ def computeCoverageMatrix(SD):
     start_time = time.time()
     C, columns = dominationTrim(C, SDist)
     print 'Domination time = %f' % (time.time()-start_time)
-
-    print np.sum(C, axis=1)
 
     # shorten the facility data sets
     cols = np.nonzero(columns)[0]
@@ -156,7 +157,9 @@ def dominationTrim(A, SDist):
                 c_keeps[i] = 0
                 break
     
-    return A[:,c_keeps.astype(bool)], c_keeps
+    #Z = A[np.ix_(c_keeps.astype(bool),c_keeps.astype(bool))]
+    Z = A[:,c_keeps.astype(bool)]
+    return Z, c_keeps
     
 
 def BuildModel(solver, X):
@@ -226,41 +229,17 @@ def read_problem(file):
     global numSites
     global numDemands
     global sites
-    global numForced
+        
+    if (file[-3:].lower() == "dat"):
+        sites = readDataFiles.readDat(file)
+    else:
+        sys.exit("invalid file type")
+        
+    numSites = sites.shape[0]    
+    numDemands = numSites
     
-    print 'readFile({0})'.format(file)
-    
-    lineCount = 0
-    i = 0
-    numForced = 0
-    
-    # Use With Statement to automatically close the 'read file' when finished.
-    with open(file,'r') as f:
-        for line in f:
-            line = line.strip()
-            
-            # ignore comments
-            if (line[0] == '#' or line[0] == '%' or len(line) == 0):
-                continue
-            #print line
-            
-            if (lineCount == 0):
-                # Set the number of sites from the file
-                numSites = int(line)
-                numDemands = numSites
-                
-                # Create and instantiate the array 'sites'
-                #sites = [[None for k in range(4)] for j in range(numSites)]
-                sites = np.empty([numSites,4])
-            else:
-                row = line.split(" ")
-                # Set constraint coefficients
-                for j in range(0,4):
-                    sites[i,j] = float(row[j])
-                i += 1
-            lineCount += 1
-        # NOTE: CODE BREAKS IF THERE ARE EMPTY LINES AFTER DATA, THIS SHOULD BE FIXED
-        print 'Finished Reading File!'
+    print '%d locations' % numSites
+    print 'Finished Reading File!'
 
 
 def Announce(solver, api_type):
