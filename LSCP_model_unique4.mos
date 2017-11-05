@@ -109,10 +109,15 @@ forall (j in index) x(j) is_binary
 
 ! solve LSCP for each unique coverage distance in the distance matrix, outputting 
 ! the smax value when a new objective is found
-uniqueN:=1..q-1 
+uniqueN:=2..q-1 
+
+! The 55 facility problem is trivial
+writeln("Smax = ", 0)
+writeln("Objective Value = ", 55)
+
 forall(k in uniqueN) do
 
-	!smax_squared:=uniqueD(453-k)
+	!smax_squared:=uniqueD(453-k)  no longer used
 	smax_squared:=uniqueD(k)
 
 	forall(i in index) do
