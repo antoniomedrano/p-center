@@ -166,7 +166,7 @@ def dominationTrim(A, SDist):
     E = A[:,c_keeps.astype(bool)]   # delete columns from coverage matrix
     #L = L[:,c_keeps.astype(bool)]   # delete colums from lower triangle matrix
     U = U[:,c_keeps.astype(bool)]   # delete colums from upper triangle matrix
-    r_indices = r_indices[c_keeps.astype(bool)]
+    c_indices = c_indices[c_keeps.astype(bool)] # delete columns from column index list
     
     # Row Domination
     # find subsets, ignoring rows that are known to already be subsets
@@ -188,7 +188,9 @@ def dominationTrim(A, SDist):
                 r_keeps[j] = 0
                 break
                 
+    # Essential Sites
     T = E[r_keeps.astype(bool),:]   # delete rows from coverage matrix
+    r_indices = r_indices[r_keeps.astype(bool)] # delew rows from row index list
     
     rowSumIsOne = np.where(np.sum(T, axis=1)==1)[0]
     nonZeroCols = np.where(T[rowSumIsOne,:])[1]
@@ -266,41 +268,17 @@ def read_problem(file):
     global numSites
     global numDemands
     global sites
-    global numForced
+        
+    if (file[-3:].lower() == "dat"):
+        sites = readDataFiles.readDat(file)
+    else:
+        sys.exit("invalid file type")
+        
+    numSites = sites.shape[0]    
+    numDemands = numSites
     
-    print 'readFile({0})'.format(file)
-    
-    lineCount = 0
-    i = 0
-    numForced = 0
-    
-    # Use With Statement to automatically close the 'read file' when finished.
-    with open(file,'r') as f:
-        for line in f:
-            line = line.strip()
-            
-            # ignore comments
-            if (line[0] == '#' or line[0] == '%' or len(line) == 0):
-                continue
-            #print line
-            
-            if (lineCount == 0):
-                # Set the number of sites from the file
-                numSites = int(line)
-                numDemands = numSites
-                
-                # Create and instantiate the array 'sites'
-                #sites = [[None for k in range(4)] for j in range(numSites)]
-                sites = np.empty([numSites,4])
-            else:
-                row = line.split(" ")
-                # Set constraint coefficients
-                for j in range(0,4):
-                    sites[i,j] = float(row[j])
-                i += 1
-            lineCount += 1
-        # NOTE: CODE BREAKS IF THERE ARE EMPTY LINES AFTER DATA, THIS SHOULD BE FIXED
-        print 'Finished Reading File!'
+    print '%d locations' % numSites
+    print 'Finished Reading File!'
 
 
 def Announce(solver, api_type):

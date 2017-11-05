@@ -16,6 +16,7 @@
 import sys
 import time
 import numpy as np
+import readDataFiles
 from scipy.sparse import csc_matrix
 from scipy.spatial.distance import cdist
 from ortools.linear_solver import pywraplp
@@ -102,16 +103,6 @@ def computeCoverageMatrix(SD):
     else:
         SDist = (cdist(B, B,'sqeuclidean') <= SDsquared).astype(int)
         
-#
-#     start_time = time.time()
-#     C, columns = dominationTrim(C, SDist)
-#     print 'Domination time = %f' % (time.time()-start_time)
-#
-#     # shorten the facility data sets
-#     cols = np.nonzero(columns)[0]
-#     facilityIDs = [facilityIDs[j] for j in cols]
-#     numSites = len(facilityIDs)
-#
     # Convert coverage to sparse matrix
     Nrows,Ncols = np.nonzero(C.astype(bool))
     Nsize = len(Nrows)
@@ -137,11 +128,6 @@ def BuildModel(solver, X):
         X[j] = solver.BoolVar(name)
         # add the site location variables to the objective function
         objective.SetCoefficient(X[j],1)
-    
-    # if facility is fixed into the solution, add a constraint to make it so
-    for k in range(numForced):
-          c3[k] = solver.Constraint(1,1)
-          c3[k].SetCoefficient(X[forcedFacilities[k]],1)
     
     # add demands to the objective and coverage constraints
     for i in range(numDemands):
@@ -186,41 +172,17 @@ def read_problem(file):
     global numSites
     global numDemands
     global sites
-    global numForced
+        
+    if (file[-3:].lower() == "dat"):
+        sites = readDataFiles.readDat(file)
+    else:
+        sys.exit("invalid file type")
+        
+    numSites = sites.shape[0]    
+    numDemands = numSites
     
-    print 'readFile({0})'.format(file)
-    
-    lineCount = 0
-    i = 0
-    numForced = 0
-    
-    # Use With Statement to automatically close the 'read file' when finished.
-    with open(file,'r') as f:
-        for line in f:
-            line = line.strip()
-            
-            # ignore comments
-            if (line[0] == '#' or line[0] == '%' or len(line) == 0):
-                continue
-            #print line
-            
-            if (lineCount == 0):
-                # Set the number of sites from the file
-                numSites = int(line)
-                numDemands = numSites
-                
-                # Create and instantiate the array 'sites'
-                #sites = [[None for k in range(4)] for j in range(numSites)]
-                sites = np.empty([numSites,4])
-            else:
-                row = line.split(" ")
-                # Set constraint coefficients
-                for j in range(0,4):
-                    sites[i,j] = float(row[j])
-                i += 1
-            lineCount += 1
-        # NOTE: CODE BREAKS IF THERE ARE EMPTY LINES AFTER DATA, THIS SHOULD BE FIXED
-        print 'Finished Reading File!'
+    print '%d locations' % numSites
+    print 'Finished Reading File!'
 
 
 def Announce(solver, api_type):
@@ -259,7 +221,7 @@ if __name__ == '__main__':
     main(None)
   elif len(sys.argv) > 1 and len(sys.argv) <= 2:
     SD = float(sys.argv[1])
-    file = r'./data/swain.txt'
+    file = r'./data/swain.dat'
     print "Problem instance from: ", file
     read_problem(file)
     main(None)
