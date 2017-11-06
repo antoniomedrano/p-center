@@ -17,6 +17,7 @@ import sys
 import time
 import numpy as np
 import readDataFiles
+import plot
 from scipy.sparse import csc_matrix
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
@@ -145,6 +146,7 @@ def dominationTrim(A, SDist):
             elif col1.issubset(col2):
                 c_keeps[i] = 0
                 break
+                
     E = A[:,c_keeps.astype(bool)]   # delete columns from coverage matrix
     #L = L[:,c_keeps.astype(bool)]   # delete colums from lower triangle matrix
     U = U[:,c_keeps.astype(bool)]   # delete colums from upper triangle matrix
@@ -166,9 +168,9 @@ def dominationTrim(A, SDist):
             row2 = S[j]
             if row2.issubset(row1):
                 r_keeps[i] = 0
+                break
             elif row1.issubset(row2):
                 r_keeps[j] = 0
-                break
                 
     # Essential Sites
     T = E[r_keeps.astype(bool),:]   # delete rows from coverage matrix

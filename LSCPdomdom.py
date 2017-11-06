@@ -17,6 +17,7 @@ import sys
 import time
 import numpy as np
 import readDataFiles
+import plot
 from scipy.sparse import csc_matrix
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
@@ -94,9 +95,7 @@ def computeCoverageMatrix(SD):
     rows = np.nonzero(row_keeps)[0]
     facilityIDs = [facilityIDs[j] for j in cols]
     numSites = len(facilityIDs)
-    print numSites
     numDemands = len(rows)
-    print numDemands
 
     # Convert coverage to sparse matrix
     Nrows,Ncols = np.nonzero(C.astype(bool))
@@ -142,6 +141,7 @@ def dominationTrim(A, SDist):
             elif col1.issubset(col2):
                 c_keeps[i] = 0
                 break
+                
     E = A[:,c_keeps.astype(bool)]
     U = U[:,c_keeps.astype(bool)]
     # Row Domination
@@ -160,9 +160,9 @@ def dominationTrim(A, SDist):
             row2 = S[j]
             if row2.issubset(row1):
                 r_keeps[i] = 0
+                break
             elif row1.issubset(row2):
                 r_keeps[j] = 0
-                break
                 
     T = E[r_keeps.astype(bool),:]
     
