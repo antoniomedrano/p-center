@@ -17,6 +17,7 @@ import sys
 import time
 import numpy as np
 import readDataFiles
+import plot
 from scipy.sparse import csc_matrix
 from scipy.spatial.distance import cdist
 from ortools.linear_solver import pywraplp
@@ -179,6 +180,8 @@ def read_problem(file):
         
     numSites = sites.shape[0]    
     numDemands = numSites
+    
+    plot.plotData(sites)
     
     print '%d locations' % numSites
     print 'Finished Reading File!'
