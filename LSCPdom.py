@@ -230,10 +230,12 @@ def read_problem(file):
     global numDemands
     global sites
         
-    if (file[-3:].lower() == "dat"):
-        sites = readDataFiles.readDat(file)
-    else:
-        sys.exit("invalid file type")
+    try:
+        if (file[-3:].lower() == "dat"):
+            sites = readDataFiles.readDat(file)
+    except IOError:
+        print 'Error reading file'
+        raise
         
     numSites = sites.shape[0]    
     numDemands = numSites
