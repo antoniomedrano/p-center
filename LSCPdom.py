@@ -16,6 +16,7 @@
 import sys
 import time
 import numpy as np
+import readDataFiles
 from scipy.sparse import csc_matrix
 from scipy.spatial.distance import cdist
 from ortools.linear_solver import pywraplp
@@ -74,27 +75,8 @@ def computeCoverageMatrix(SD):
     
     # Compute the distance matrix, using the squared distance
     sqDistMatrix = cdist(A, B,'sqeuclidean')
-    print 'Max Point-to-Point Distance = %f' % np.sqrt(np.amax(sqDistMatrix))
-    print 'Mean Point-to-Point Distance = %f' % np.sqrt(np.mean(sqDistMatrix))
-    print np.shape(sqDistMatrix)
-    
     distances = np.unique(sqDistMatrix)
-    print np.size(distances)
-    
-    colmax = np.amax(sqDistMatrix,0)
-    minmax = np.amin(colmax)
-    
-    # print colmax
-    print minmax
-    
-    print "The element in the distances set of the minmax is"
-    print np.where(distances==minmax)
-    
-    print "The site of the minmax is"
-    print np.where(colmax==minmax)[0]+1
-    
     SDsquared = SD*SD
-    TwoSDsquared = 4*SDsquared
 
     # Determine neighborhood of demands within SD of sites
     C = (sqDistMatrix <= SDsquared).astype(int)
@@ -180,11 +162,6 @@ def BuildModel(solver, X):
         X[j] = solver.BoolVar(name)
         # add the site location variables to the objective function
         objective.SetCoefficient(X[j],1)
-    
-    # if facility is fixed into the solution, add a constraint to make it so
-    for k in range(numForced):
-          c3[k] = solver.Constraint(1,1)
-          c3[k].SetCoefficient(X[forcedFacilities[k]],1)
     
     # add demands to the objective and coverage constraints
     for i in range(numDemands):
@@ -280,7 +257,7 @@ if __name__ == '__main__':
     main(None)
   elif len(sys.argv) > 1 and len(sys.argv) <= 2:
     SD = float(sys.argv[1])
-    file = r'./data/swain.txt'
+    file = r'./data/swain.dat'
     print "Problem instance from: ", file
     read_problem(file)
     main(None)
