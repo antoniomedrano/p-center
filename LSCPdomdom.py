@@ -28,15 +28,17 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     """ Example of simple MCLP program with the C++ style API."""
     solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
     
-    # Create a global version of:
-    # Facility Site Variable X
-    X = [None] * numSites
+
     
     #print sites
     #print np.shape(sites)
     start_time = time.time()
     
     computeCoverageMatrix(SD)
+    
+    # Facility Site Variable X
+    X = [None] * numSites
+    
     BuildModel(solver, X)
     SolveModel(solver)
     
@@ -56,6 +58,7 @@ def computeCoverageMatrix(SD):
     global Nrows
     global Ncols
     global Nsize
+    global cols
     global facilityIDs
     
     # for now, all demands are also sites
@@ -91,8 +94,8 @@ def computeCoverageMatrix(SD):
     print 'Domination time = %f' % (time.time()-start_time)
 
     # shorten the facility data sets
-    cols = np.nonzero(col_keeps)[0]
-    rows = np.nonzero(row_keeps)[0]
+    cols = np.nonzero(col_keeps)[0]    # index of remaining cols after domination
+    rows = np.nonzero(row_keeps)[0]    # index of remaining rows after domination
     facilityIDs = [facilityIDs[j] for j in cols]
     numSites = len(facilityIDs)
     numDemands = len(rows)
@@ -110,6 +113,8 @@ def dominationTrim(A, SDist):
     rows,cols = A.shape
     c_keeps = np.ones(cols)
     r_keeps = np.ones(rows)
+    # rows = range(rows)
+    # cols = range(cols)
     
     # lower triangle of coverage matrix for checking only columns within SD
     # Explanation:
@@ -142,12 +147,12 @@ def dominationTrim(A, SDist):
                 c_keeps[i] = 0
                 break
                 
-    E = A[:,c_keeps.astype(bool)]
+    A = A[:,c_keeps.astype(bool)]
     U = U[:,c_keeps.astype(bool)]
     # Row Domination
     # find subsets, ignoring rows that are known to already be subsets
     # create a list of sets containing the indices of non-zero elements of each column
-    R = csr_matrix(E)
+    R = csr_matrix(A)
     S = [set(R.indices[R.indptr[i]:R.indptr[i+1]]) for i in range(len(R.indptr)-1)]
     
     for i in range(rows):
@@ -164,9 +169,9 @@ def dominationTrim(A, SDist):
             elif row1.issubset(row2):
                 r_keeps[j] = 0
                 
-    T = E[r_keeps.astype(bool),:]
+    A = A[r_keeps.astype(bool),:]
     
-    return T, c_keeps, r_keeps
+    return A, c_keeps, r_keeps
     
 
 def BuildModel(solver, X):
@@ -221,12 +226,15 @@ def displaySolution(X, p, total_time):
     print 'p = %d' % p
     print 'SD = %f' % SD
     # print the selected sites
-    print
-    count = -1
+    print    
     for j in range(numSites):
         if (X[j].SolutionValue() == 1.0):
             print "Site selected %d" % int(facilityIDs[j])
-
+            
+    # plot solution
+    plot.plotSolution(sites, X, cols, SD)
+    
+            
 def read_problem(file):
     global numSites
     global numDemands

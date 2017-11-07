@@ -160,11 +160,14 @@ def displaySolution(X, p, total_time):
     print 'p = %d' % p
     print 'SD = %f' % SD
     # print the selected sites
-    print
-    count = -1
+    print    
     for j in range(numSites):
         if (X[j].SolutionValue() == 1.0):
             print "Site selected %d" % int(facilityIDs[j])
+    
+    # plot solution
+    plot.plotSolution(sites, X, range(numSites), SD)
+    
 
 def read_problem(file):
     global numSites
@@ -181,7 +184,7 @@ def read_problem(file):
     numSites = sites.shape[0]    
     numDemands = numSites
     
-    plot.plotData(sites)
+    # plot.plotData(sites)
     
     print '%d locations' % numSites
     print 'Finished Reading File!'
