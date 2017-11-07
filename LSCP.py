@@ -104,8 +104,7 @@ def computeCoverageMatrix(SD):
     # Convert coverage to sparse matrix
     Nrows,Ncols = np.nonzero(C.astype(bool))
     Nsize = len(Nrows)
-#
-#     return [SD]
+
     return 0
 
 def BuildModel(solver, X):

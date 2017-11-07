@@ -88,7 +88,7 @@ def computeCoverageMatrix(SD):
         
 
     start_time = time.time()
-    C, columns = dominationTrim(C, SDist)
+    C, col_keeps = dominationTrim(C, SDist)
     print 'Domination time = %f' % (time.time()-start_time)
 
     # shorten the facility data sets
@@ -99,8 +99,7 @@ def computeCoverageMatrix(SD):
     # Convert coverage to sparse matrix
     Nrows,Ncols = np.nonzero(C.astype(bool))
     Nsize = len(Nrows)
-#
-#     return [SD]
+
     return 0
 
 
