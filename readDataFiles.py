@@ -52,5 +52,13 @@ def readDat(file):
             sites[i,:] = row[0:4]
             i += 1
         
-        return sites
+    return sites
 
+
+def readTSP(file):
+    """
+    Read a file from the TSP library .tsp file format
+    """
+    sites = 0
+    
+    return sites

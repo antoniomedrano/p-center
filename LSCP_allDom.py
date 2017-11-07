@@ -53,6 +53,7 @@ def computeCoverageMatrix(SD):
     global distances
     global numDemands
     global numSites
+    global numForced
     global Nrows
     global Ncols
     global Nsize
@@ -192,6 +193,8 @@ def BuildModel(solver, X):
     # DECLARE CONSTRAINTS:
     # declare demand coverage constraints (binary integer: 1 if UNCOVERED, 0 if COVERED)
     c1 = [None]*numDemands
+    # declare the forced facility location constraints
+    c2 = [None]*numForced
     
     # declare the objective
     objective = solver.Objective()
@@ -208,6 +211,11 @@ def BuildModel(solver, X):
     for i in range(numDemands):
         # Covering constraints
         c1[i] = solver.Constraint(1, solver.infinity())
+        
+    # if facility is fixed into the solution, add a constraint to make it so
+    for k in range(numForced):
+          c2[k] = solver.Constraint(1,1)
+          c2[k].SetCoefficient(X[forcedFacilities[k]],1)
 
     # add facility coverages to the coverage constraints
     for k in range(Nsize):

@@ -88,11 +88,10 @@ def computeCoverageMatrix(SD):
         
 
     start_time = time.time()
-    C, col_keeps = dominationTrim(C, SDist)
+    C, cols = dominationTrim(C, SDist)
     print 'Domination time = %f' % (time.time()-start_time)
 
     # shorten the facility data sets
-    cols = np.nonzero(col_keeps)[0]    # index of remaining cols after domination
     facilityIDs = [facilityIDs[j] for j in cols]
     numSites = len(facilityIDs)
 
@@ -105,8 +104,9 @@ def computeCoverageMatrix(SD):
 
 def dominationTrim(A, SDist):
     
-    rows,cols = A.shape
-    c_keeps = np.ones(cols)
+    r,c = A.shape
+    c_keeps = np.ones(c)
+    cols = np.array(range(c))
     
     # lower triangle of coverage matrix for checking only columns within SD
     # Explanation:
@@ -123,7 +123,7 @@ def dominationTrim(A, SDist):
     # print 'Matrix to List of Sets CSC Time = %f' % (time.time()-start_time)
     
     # find subsets, ignoring columns that are known to already be subsets
-    for i in range(cols):
+    for i in cols:
         if c_keeps[i]==0:
             continue
         col1 = D[i]
@@ -139,7 +139,9 @@ def dominationTrim(A, SDist):
     
     #Z = A[np.ix_(c_keeps.astype(bool),c_keeps.astype(bool))]
     A = A[:,c_keeps.astype(bool)]
-    return A, c_keeps
+    cols = cols[c_keeps.astype(bool)]
+    
+    return A, cols
     
 
 def BuildModel(solver, X):
