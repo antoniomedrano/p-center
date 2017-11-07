@@ -8,6 +8,8 @@ z = np.cos(t)
 plt.figure(figsize=(10,6))
 plt.plot(t, y, 'r-', label='y') # y
 plt.plot(t, z, 'b-', label='z') # z
+circle1 = plt.Circle((6, .6), 0.5, color='b', fill=False)
+plt.gcf().gca().add_artist(circle1)
 circle2 = plt.Circle((5, .5), 0.5, color='b', fill=False)
 plt.gcf().gca().add_artist(circle2)
 plt.xlabel('Time')

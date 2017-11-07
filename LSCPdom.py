@@ -33,7 +33,6 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     
     computeCoverageMatrix(SD)
 
-    # Create a global version of:
     # Facility Site Variable X
     X = [None] * numSites
     
@@ -56,6 +55,7 @@ def computeCoverageMatrix(SD):
     global Nrows
     global Ncols
     global Nsize
+    global cols
     global facilityIDs
     
     # for now, all demands are also sites
@@ -88,19 +88,18 @@ def computeCoverageMatrix(SD):
         
 
     start_time = time.time()
-    C, columns = dominationTrim(C, SDist)
+    C, col_keeps = dominationTrim(C, SDist)
     print 'Domination time = %f' % (time.time()-start_time)
 
     # shorten the facility data sets
-    cols = np.nonzero(columns)[0]
+    cols = np.nonzero(col_keeps)[0]    # index of remaining cols after domination
     facilityIDs = [facilityIDs[j] for j in cols]
     numSites = len(facilityIDs)
 
     # Convert coverage to sparse matrix
     Nrows,Ncols = np.nonzero(C.astype(bool))
     Nsize = len(Nrows)
-#
-#     return [SD]
+
     return 0
 
 
@@ -139,8 +138,8 @@ def dominationTrim(A, SDist):
                 break
     
     #Z = A[np.ix_(c_keeps.astype(bool),c_keeps.astype(bool))]
-    Z = A[:,c_keeps.astype(bool)]
-    return Z, c_keeps
+    A = A[:,c_keeps.astype(bool)]
+    return A, c_keeps
     
 
 def BuildModel(solver, X):
@@ -196,10 +195,13 @@ def displaySolution(X, p, total_time):
     print 'SD = %f' % SD
     # print the selected sites
     print
-    count = -1
     for j in range(numSites):
         if (X[j].SolutionValue() == 1.0):
             print "Site selected %d" % int(facilityIDs[j])
+            
+    # plot solution
+    plot.plotSolution(sites, X, cols, SD)
+    
 
 def read_problem(file):
     global numSites
