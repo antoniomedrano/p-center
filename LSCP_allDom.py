@@ -81,9 +81,11 @@ def computeCoverageMatrix(SD):
 
     # Determine neighborhood of demands within SD of sites
     C = (sqDistMatrix <= SDsquared).astype(int)
+    # Determine neighborhood of sites within 2*SD of sites (symmetric)
+    C2 = (sqDistMatrix <= 4*SDsquared).astype(int)
 
     start_time = time.time()
-    C, rows, cols = dominationTrim(C)
+    C, rows, cols = dominationTrim(C, C2)
     print 'Domination time = %f' % (time.time()-start_time)
 
     # shorten the facility data sets
@@ -98,10 +100,9 @@ def computeCoverageMatrix(SD):
     return 0
 
 
-def dominationTrim(A):
+def dominationTrim(A, A2):
     
     r,c = A.shape
-    Aorig = A
     
     # lower triangle of coverage matrix for checking only columns within SD
     # Explanation:
@@ -109,14 +110,16 @@ def dominationTrim(A):
     # using tril means you don't check backwards
     # NOTE: THIS WORKS FOR ONLY SQUARE COVERAGE MATRICES WHERE ALL DEMANDS ARE SITES
     # UPDATE WITH SITE vs. SITE COVERAGE MATRIX FOR OTHER CASES
-    L = np.tril(A,-1)
-    U = np.triu(A,1)
+    L = np.tril(A2,-1)
+    U = np.triu(A2,1)
     
     rows = np.array(range(r))
     cols = np.array(range(c))
     
+    k = 0
+    
     while True:
-        
+        k += 1
         c_keeps = np.ones(c)
         r_keeps = np.ones(r)
 
@@ -130,6 +133,7 @@ def dominationTrim(A):
             if c_keeps[i]==0:
                 continue
             col1 = D[i]
+            #for j in range(i+1,c):
             for j in np.nonzero(L[:,i])[0]:
                 col2 = D[j]
                 if col2.issubset(col1):
@@ -151,6 +155,7 @@ def dominationTrim(A):
             if r_keeps[i]==0:
                 continue
             row1 = S[i]
+            #for j in range(i+1,r):
             for j in np.nonzero(U[i,:])[0]:
                 row2 = S[j]
                 if row2.issubset(row1):
@@ -162,20 +167,32 @@ def dominationTrim(A):
         A = A[r_keeps.astype(bool),:]
         rows = rows[r_keeps.astype(bool)]
         
-        # Essential Sites
-        # Designate sites that uniquely cover certain demands as essential, requiring forced
-        # location there.
+        # # Essential Sites
+        # # Designate sites that uniquely cover certain demands as essential, requiring forced
+        # # location there.
+        # rnew,cnew = A.shape
+        # r_keeps = np.ones(rnew)
+        # rSum = np.sum(A, axis=1)
+        #
+        # for i in range(rnew):
+        #     if rSum[i] == 1:
+        #         r_keeps[i] = 0
+                
+        
+        
+        # print rSum
         
         # Check if there was an improvement. If so, repeat.
         rnew,cnew = A.shape
-                
+        print k, rnew, cnew
+        
         if (rnew == r and cnew == c):
             break
         else:
             # remaining sites to sites distance matrix
-            L = np.tril(Aorig[np.ix_(c_keeps.astype(bool), c_keeps.astype(bool))],-1)
+            L = np.tril(L[np.ix_(c_keeps.astype(bool), c_keeps.astype(bool))],-1)
             # remainin demands to demands distance matrix
-            U = np.triu(Aorig[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))],1)
+            U = np.triu(U[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))],1)
             r = rnew
             c = cnew
     
@@ -185,6 +202,7 @@ def dominationTrim(A):
 def BuildModel(solver, X):
     
     infinity = solver.infinity()
+    numForced = 0
     
     # DECLARE CONSTRAINTS:
     # declare demand coverage constraints (binary integer: 1 if UNCOVERED, 0 if COVERED)
