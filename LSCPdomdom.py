@@ -115,12 +115,7 @@ def dominationTrim(A):
     rows = np.array(range(r))
     cols = np.array(range(c))
     
-    k = 0
-    
     while True:
-        
-        # k += 1
-        # print k, r, c
         
         c_keeps = np.ones(c)
         r_keeps = np.ones(r)
@@ -167,6 +162,7 @@ def dominationTrim(A):
         A = A[r_keeps.astype(bool),:]
         rows = rows[r_keeps.astype(bool)]
         
+        # Check if there was an improvement. If so, repeat.
         rnew,cnew = A.shape
                 
         if (rnew == r and cnew == c):

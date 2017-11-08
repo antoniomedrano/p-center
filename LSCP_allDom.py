@@ -28,6 +28,8 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     """ Example of simple MCLP program with the C++ style API."""
     solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
     
+
+    
     #print sites
     #print np.shape(sites)
     start_time = time.time()
@@ -53,7 +55,6 @@ def computeCoverageMatrix(SD):
     global distances
     global numDemands
     global numSites
-    global numForced
     global Nrows
     global Ncols
     global Nsize
@@ -71,36 +72,24 @@ def computeCoverageMatrix(SD):
     #A = [xyPointArray[i][:] for i in demandIDs]
     #B = [xyPointArray[j][:] for j in facilityIDs]
     A = xyPointArray
-    B = A
     #print A
     
     # Compute the distance matrix, using the squared distance
-    sqDistMatrix = cdist(A, B,'sqeuclidean')
+    sqDistMatrix = cdist(A, A,'sqeuclidean')
     distances = np.unique(sqDistMatrix)
     SDsquared = SD*SD
 
     # Determine neighborhood of demands within SD of sites
     C = (sqDistMatrix <= SDsquared).astype(int)
 
-    # Determine neighborhood of sites within SD of sites
-    if allFD3 == True:
-        SDist = C
-    else:
-        SDist = (cdist(B, B,'sqeuclidean') <= SDsquared).astype(int)
-        
-
     start_time = time.time()
-    C, col_keeps, row_keeps = dominationTrim(C, SDist)
+    C, rows, cols = dominationTrim(C)
     print 'Domination time = %f' % (time.time()-start_time)
 
     # shorten the facility data sets
-    cols = np.nonzero(col_keeps)[0]    # index of remaining cols after domination
-    rows = np.nonzero(row_keeps)[0]    # index of remaining rows after domination
-    facilityIDs = [facilityIDs[j] for j in cols]
+    facilityIDs = facilityIDs[cols]
     numSites = len(facilityIDs)
-    print numSites
     numDemands = len(rows)
-    print numDemands
 
     # Convert coverage to sparse matrix
     Nrows,Ncols = np.nonzero(C.astype(bool))
@@ -109,13 +98,10 @@ def computeCoverageMatrix(SD):
     return 0
 
 
-def dominationTrim(A, SDist):
+def dominationTrim(A):
     
-    rows,cols = A.shape
-    r_indices = np.array(range(rows))
-    c_indices = np.array(range(cols))
-    c_keeps = np.ones(cols)
-    r_keeps = np.ones(rows)
+    r,c = A.shape
+    Aorig = A
     
     # lower triangle of coverage matrix for checking only columns within SD
     # Explanation:
@@ -123,67 +109,77 @@ def dominationTrim(A, SDist):
     # using tril means you don't check backwards
     # NOTE: THIS WORKS FOR ONLY SQUARE COVERAGE MATRICES WHERE ALL DEMANDS ARE SITES
     # UPDATE WITH SITE vs. SITE COVERAGE MATRIX FOR OTHER CASES
-    L = np.tril(SDist,-1)   # lower triangle matrix
-    U = np.triu(SDist,1)    # upper triangle matrix
+    L = np.tril(A,-1)
+    U = np.triu(A,1)
     
-    # start_time = time.time()
-    # create a list of sets containing the indices of non-zero elements of each column
-    C = csc_matrix(A)
-    D = [set(C.indices[C.indptr[i]:C.indptr[i+1]]) for i in range(len(C.indptr)-1)]
-    # print 'Matrix to List of Sets CSC Time = %f' % (time.time()-start_time)
+    rows = np.array(range(r))
+    cols = np.array(range(c))
     
-    # Column domination
-    # find subsets, ignoring columns that are known to already be subsets
-    for i in range(cols):
-        if c_keeps[i]==0:
-            continue
-        col1 = D[i]
-        for j in np.nonzero(L[:,i])[0]:
-            # I tried `if keeps[j]==false: continue` here, but that was slower
-            # if keeps[j]==False: continue
-            col2 = D[j]
-            if col2.issubset(col1):
-                c_keeps[j] = 0
-            elif col1.issubset(col2):
-                c_keeps[i] = 0
-                break
+    while True:
+        
+        c_keeps = np.ones(c)
+        r_keeps = np.ones(r)
+
+        # create a list of sets containing the indices of non-zero elements of each column
+        C = csc_matrix(A)
+        D = [set(C.indices[C.indptr[i]:C.indptr[i+1]]) for i in range(len(C.indptr)-1)]
+
+        # Column domination
+        # find subsets, ignoring columns that are known to already be subsets
+        for i in range(c):
+            if c_keeps[i]==0:
+                continue
+            col1 = D[i]
+            for j in np.nonzero(L[:,i])[0]:
+                col2 = D[j]
+                if col2.issubset(col1):
+                    c_keeps[j] = 0
+                elif col1.issubset(col2):
+                    c_keeps[i] = 0
+                    break
                 
-    E = A[:,c_keeps.astype(bool)]   # delete columns from coverage matrix
-    #L = L[:,c_keeps.astype(bool)]   # delete colums from lower triangle matrix
-    U = U[:,c_keeps.astype(bool)]   # delete colums from upper triangle matrix
-    c_indices = c_indices[c_keeps.astype(bool)] # delete columns from column index list
+        A = A[:,c_keeps.astype(bool)]
+        cols = cols[c_keeps.astype(bool)]
     
-    # Row Domination
-    # find subsets, ignoring rows that are known to already be subsets
-    # create a list of sets containing the indices of non-zero elements of each column
-    R = csr_matrix(E)
-    S = [set(R.indices[R.indptr[i]:R.indptr[i+1]]) for i in range(len(R.indptr)-1)]
+        # Row Domination
+        # find subsets, ignoring rows that are known to already be subsets
+        # create a list of sets containing the indices of non-zero elements of each column
+        R = csr_matrix(A)
+        S = [set(R.indices[R.indptr[i]:R.indptr[i+1]]) for i in range(len(R.indptr)-1)]
     
-    for i in range(rows):
-        if r_keeps[i]==0:
-            continue
-        row1 = S[i]
-        for j in np.nonzero(U[i,:])[0]:
-            # I tried `if keeps[j]==false: continue` here, but that was slower
-            # if keeps[j]==False: continue
-            row2 = S[j]
-            if row2.issubset(row1):
-                r_keeps[i] = 0
-                break
-            elif row1.issubset(row2):
-                r_keeps[j] = 0
+        for i in range(r):
+            if r_keeps[i]==0:
+                continue
+            row1 = S[i]
+            for j in np.nonzero(U[i,:])[0]:
+                row2 = S[j]
+                if row2.issubset(row1):
+                    r_keeps[i] = 0
+                    break
+                elif row1.issubset(row2):
+                    r_keeps[j] = 0
                 
-    # Essential Sites
-    T = E[r_keeps.astype(bool),:]   # delete rows from coverage matrix
-    r_indices = r_indices[r_keeps.astype(bool)] # delew rows from row index list
+        A = A[r_keeps.astype(bool),:]
+        rows = rows[r_keeps.astype(bool)]
+        
+        # Essential Sites
+        # Designate sites that uniquely cover certain demands as essential, requiring forced
+        # location there.
+        
+        # Check if there was an improvement. If so, repeat.
+        rnew,cnew = A.shape
+                
+        if (rnew == r and cnew == c):
+            break
+        else:
+            # remaining sites to sites distance matrix
+            L = np.tril(Aorig[np.ix_(c_keeps.astype(bool), c_keeps.astype(bool))],-1)
+            # remainin demands to demands distance matrix
+            U = np.triu(Aorig[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))],1)
+            r = rnew
+            c = cnew
     
-    rowSumIsOne = np.where(np.sum(T, axis=1)==1)[0]
-    nonZeroCols = np.where(T[rowSumIsOne,:])[1]
-    print rowSumIsOne
-    print nonZeroCols
-    print np.unique(nonZeroCols)
-    
-    return T, c_keeps, r_keeps
+    return A, rows, cols
     
 
 def BuildModel(solver, X):
@@ -211,7 +207,7 @@ def BuildModel(solver, X):
     for i in range(numDemands):
         # Covering constraints
         c1[i] = solver.Constraint(1, solver.infinity())
-        
+
     # if facility is fixed into the solution, add a constraint to make it so
     for k in range(numForced):
           c2[k] = solver.Constraint(1,1)
@@ -245,15 +241,15 @@ def displaySolution(X, p, total_time):
     print 'p = %d' % p
     print 'SD = %f' % SD
     # print the selected sites
-    print
+    print    
     for j in range(numSites):
         if (X[j].SolutionValue() == 1.0):
             print "Site selected %d" % int(facilityIDs[j])
-    
+            
     # plot solution
     plot.plotSolution(sites, X, cols, SD)
     
-
+            
 def read_problem(file):
     global numSites
     global numDemands
