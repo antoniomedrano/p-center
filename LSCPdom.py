@@ -79,16 +79,12 @@ def computeCoverageMatrix(SD):
 
     # Determine neighborhood of demands within SD of sites
     C = (sqDistMatrix <= SDsquared).astype(int)
-     
-    # Determine neighborhood of sites within SD of sites
-    if allFD3 == True:
-        SDist = C
-    else:
-        SDist = (cdist(B, B,'sqeuclidean') <= SDsquared).astype(int)
+    # Determine neighborhood of sites within 2*SD of sites (symmetric)
+    C2 = (sqDistMatrix <= 4*SDsquared).astype(int)
         
 
     start_time = time.time()
-    C, cols = dominationTrim(C, SDist)
+    C, cols = dominationTrim(C, C2)
     print 'Domination time = %f' % (time.time()-start_time)
 
     # shorten the facility data sets
@@ -102,19 +98,17 @@ def computeCoverageMatrix(SD):
     return 0
 
 
-def dominationTrim(A, SDist):
+def dominationTrim(A, A2):
     
     r,c = A.shape
     c_keeps = np.ones(c)
     cols = np.array(range(c))
     
-    # lower triangle of coverage matrix for checking only columns within SD
+    # lower triangle of coverage matrix for checking only columns within 2*SD
     # Explanation:
-    # looking down each column, each row with a 1 represents a column withing SD of that column
+    # looking down each column, each row with a 1 represents a site within 2*SD of that site
     # using tril means you don't check backwards
-    # NOTE: THIS WORKS FOR ONLY SQUARE COVERAGE MATRICES WHERE ALL DEMANDS ARE SITES
-    # UPDATE WITH SITE vs. SITE COVERAGE MATRIX FOR OTHER CASES
-    B = np.tril(SDist,-1)
+    B = np.tril(A2,-1)
     
     # start_time = time.time()
     # create a list of sets containing the indices of non-zero elements of each column
