@@ -94,12 +94,6 @@ def computeCoverageMatrix(SD):
 
     # Determine neighborhood of demands within SD of sites
     C = (sqDistMatrix <= SDsquared).astype(int)
-
-    # Determine neighborhood of sites within SD of sites
-    if allFD3 == True:
-        SDist = C
-    else:
-        SDist = (cdist(B, B,'sqeuclidean') <= SDsquared).astype(int)
         
     # Convert coverage to sparse matrix
     Nrows,Ncols = np.nonzero(C.astype(bool))

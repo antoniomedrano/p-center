@@ -83,6 +83,7 @@ def computeCoverageMatrix(SD):
     C = (sqDistMatrix <= SDsquared).astype(int)
     # Determine neighborhood of sites within 2*SD of sites (symmetric)
     C2 = (sqDistMatrix <= 4*SDsquared).astype(int)
+    # NOTE: For non-symmetric problems, need to make a demand-to-demand matrix as well
 
     start_time = time.time()
     C, rows, cols = dominationTrim(C, C2)
@@ -104,12 +105,11 @@ def dominationTrim(A, A2):
     
     r,c = A.shape
     
-    # lower triangle of coverage matrix for checking only columns within SD
+    # lower triangle of coverage matrix for checking only columns within 2*SD
     # Explanation:
-    # looking down each column, each row with a 1 represents a column withing SD of that column
+    # looking down each column, each row with a 1 represents a site within 2*SD of that site
     # using tril means you don't check backwards
-    # NOTE: THIS WORKS FOR ONLY SQUARE COVERAGE MATRICES WHERE ALL DEMANDS ARE SITES
-    # UPDATE WITH SITE vs. SITE COVERAGE MATRIX FOR OTHER CASES
+    # NOTE: For non-symmetric problems, U should use a demand-to-demand matrix
     L = np.tril(A2,-1)
     U = np.triu(A2,1)
     

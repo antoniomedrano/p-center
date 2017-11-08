@@ -104,12 +104,10 @@ def dominationTrim(A, A2):
     c_keeps = np.ones(c)
     cols = np.array(range(c))
     
-    # lower triangle of coverage matrix for checking only columns within SD
+    # lower triangle of coverage matrix for checking only columns within 2*SD
     # Explanation:
-    # looking down each column, each row with a 1 represents a column withing SD of that column
+    # looking down each column, each row with a 1 represents a site within 2*SD of that site
     # using tril means you don't check backwards
-    # NOTE: THIS WORKS FOR ONLY SQUARE COVERAGE MATRICES WHERE ALL DEMANDS ARE SITES
-    # UPDATE WITH SITE vs. SITE COVERAGE MATRIX FOR OTHER CASES
     B = np.tril(A2,-1)
     
     # start_time = time.time()
