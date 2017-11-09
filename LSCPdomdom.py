@@ -173,9 +173,9 @@ def dominationTrim(A, A2):
             break
         else:
             # remaining sites to sites distance matrix
-            L = np.tril(L[np.ix_(c_keeps.astype(bool), c_keeps.astype(bool))],-1)
-            # remainin demands to demands distance matrix
-            U = np.triu(U[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))],1)
+            L = L[np.ix_(c_keeps.astype(bool), c_keeps.astype(bool))]
+            # remaining demands to demands distance matrix
+            U = U[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))]
             r = rnew
             c = cnew            
     

@@ -20,21 +20,38 @@ import numpy as np
 def plotData(sites):
     
     plt.figure(figsize=(6,6))
-    plt.plot(sites[:,1], sites[:,2], 'bo')
+    plt.plot(sites[:,1], sites[:,2], 'ko')
     plt.axis('equal')
     plt.show()
-    
+
 def plotSolution(sites, X, cols, SD):
     
     plt.figure(figsize=(6,6))
-    plt.plot(sites[:,1], sites[:,2], 'bo')
+    plt.plot(sites[:,1], sites[:,2], 'ko')
     numSites = len(X)
     for j in range(numSites):
         if (X[j].SolutionValue() == 1.0):
-            plt.plot(sites[cols[j],1], sites[cols[j],2], 'ro')
-            circle = plt.Circle((sites[cols[j],1], sites[cols[j],2]), SD, color='r', fill=False)
+            plt.plot(sites[cols[j],1], sites[cols[j],2], 'bo')
+            circle = plt.Circle((sites[cols[j],1], sites[cols[j],2]), SD, color='b', fill=False)
             plt.gcf().gca().add_artist(circle)
     
+    plt.axis('equal')
+    plt.show()
+    
+def plotSolutionE(sites, essential, X, cols, SD):
+    
+    plt.figure(figsize=(6,6))
+    plt.plot(sites[:,1], sites[:,2], 'ko')
+    numSites = len(X)
+    for j in range(numSites):
+        if (X[j].SolutionValue() == 1.0):
+            plt.plot(sites[cols[j],1], sites[cols[j],2], 'bo')
+            circle = plt.Circle((sites[cols[j],1], sites[cols[j],2]), SD, color='b', fill=False)
+            plt.gcf().gca().add_artist(circle)
+    for j in essential:
+        plt.plot(sites[j,1], sites[j,2], 'ro')
+        circle = plt.Circle((sites[j,1], sites[j,2]), SD, color='b', fill=False)
+        plt.gcf().gca().add_artist(circle)
     
     plt.axis('equal')
     plt.show()
