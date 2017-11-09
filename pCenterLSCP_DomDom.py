@@ -23,34 +23,94 @@ from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
 from ortools.linear_solver import pywraplp
 
-def RunLSCPCppStyleAPI(optimization_problem_type, SD):
+def RunLSCPCppStyleAPI(optimization_problem_type):
     
     """ Example of simple MCLP program with the C++ style API."""
     solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
     
     start_time = time.time()
     
-    distances, sqDistMatrix = computeDistances()
+    sqDistances, sqDistMatrix = computeDistances()
     
-    computeCoverageMatrix(sqDistMatrix, SD)
+    # p = numSites, SD = 0 is a trivial solution
+    print '  p, SD'
+    p = numSites
+    SDsquared = 0   
+    displaySolution(p, SDsquared)
     
-    # Facility Site Variable X
-    X = [None] * numSites
+    solution = np.empty([numSites, 2])
+    solution[:,0] = range(1, numSites+1)
+    solution[numSites-1,1] = 0
+    currP = numSites
+    iters = 0
+    #print solution
     
-    BuildModel(solver, X)
-    SolveModel(solver)
+    for i in range(1,len(sqDistances)):
+        SDsquared = sqDistances[i]
+        computeCoverageMatrix(sqDistMatrix, SDsquared)
     
+        # Facility Site Variable X
+        X = [None] * numSites
+
+        BuildModel(solver, X)
+        SolveModel(solver)
+
+        # get the solution and clear the solver
+        p = solver.Objective().Value()
+        solver.Clear()
+        
+        # check the output
+        while (p < currP):
+            currP -= 1
+            solution[currP-1,1] = SDsquared**0.5
+            displaySolution(currP, SDsquared)
+
+        # terminate the search when p == 1
+        if (p == 2):
+            p = 1
+            SDsquared = np.amin(np.amax(sqDistMatrix,0))
+            solution[p-1,1] = SDsquared**0.5
+            displaySolution(p, SDsquared)
+            iters = i+1
+            break
+        if (p == 1):
+            iters = i
+            break
+        
     total_time = time.time()-start_time
-    p = solver.Objective().Value()
+    #print solution
+    print
+    print '%d LSCP distances evaluated' % iters
+    print 'Total problem solved in %f seconds' % total_time
+    print
+    #plot.plotTradeoff(solution)
     
-    displaySolution(X, p, total_time)
     
     
-    
-def computeCoverageMatrix(SD):
+def computeDistances():
         
     #declare a couple variables
     global distances
+    
+    # Pull out just the coordinates from the data
+    xyPointArray = sites[:,[1,2]]
+    #A = [xyPointArray[i][:] for i in demandIDs]
+    #B = [xyPointArray[j][:] for j in siteIDs]
+    A = xyPointArray
+    B = A
+    #print A
+    
+    # Compute the distance matrix, using the squared distance
+    sqDistMatrix = cdist(A, B,'sqeuclidean')
+
+    sqDistances = np.unique(sqDistMatrix)
+    
+    return sqDistances, sqDistMatrix
+        
+    
+def computeCoverageMatrix(sqDistMatrix, SDsquared):
+        
+    #declare a couple variables
     global numDemands
     global numSites
     global Nrows
@@ -61,28 +121,14 @@ def computeCoverageMatrix(SD):
 
     # Pull out just the site/demand IDs from the data
     siteIDs = sites[:,0]
-    
-    # Pull out just the coordinates from the data
-    xyPointArray = sites[:,[1,2]]
-    #A = [xyPointArray[i][:] for i in demandIDs]
-    #B = [xyPointArray[j][:] for j in siteIDs]
-    A = xyPointArray
-    #print A
-    
-    # Compute the distance matrix, using the squared distance
-    sqDistMatrix = cdist(A, A,'sqeuclidean')
-    distances = np.unique(sqDistMatrix)
-    SDsquared = SD*SD
 
     # Determine neighborhood of demands within SD of sites
     C = (sqDistMatrix <= SDsquared).astype(int)
     # Determine neighborhood of sites within 2*SD of sites (symmetric)
     C2 = (sqDistMatrix <= 4*SDsquared).astype(int)
-    # NOTE: For non-symmetric problems, need to make a demand-to-demand matrix as well
     
-    start_time = time.time()
+    # Perform row and column domination
     C, rows, cols = dominationTrim(C, C2)
-    print 'Domination time = %f' % (time.time()-start_time)
 
     # shorten the facility data sets
     siteIDs = siteIDs[cols]
@@ -110,11 +156,8 @@ def dominationTrim(A, A2):
     
     rows = np.array(range(r))
     cols = np.array(range(c))
-    
-    k = 0
-    
+        
     while True:
-        k += 1
         c_keeps = np.ones(c)
         r_keeps = np.ones(r)
 
@@ -162,7 +205,6 @@ def dominationTrim(A, A2):
         
         # Check if there was an improvement. If so, repeat.
         rnew,cnew = A.shape
-        print k, rnew, cnew
                 
         if (rnew == r and cnew == c):
             break
@@ -205,9 +247,9 @@ def BuildModel(solver, X):
     for k in range(Nsize):
         c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
     
-    print 'Number of variables = %d' % solver.NumVariables()
-    print 'Number of constraints = %d' % solver.NumConstraints()
-    print
+    # print 'Number of variables = %d' % solver.NumVariables()
+    # print 'Number of constraints = %d' % solver.NumConstraints()
+    # print
     return 0
 
 
@@ -252,26 +294,26 @@ def Announce(solver, api_type):
     print ('---- P-Center LSCP_DomDom with ' + solver + ' (' +
         api_type + ') -----')
 
-def RunSCIP_LSCPExampleCppStyleAPI(SD):
+def RunSCIP_LSCPExampleCppStyleAPI():
     if hasattr(pywraplp.Solver, 'SCIP_MIXED_INTEGER_PROGRAMMING'):
         Announce('SCIP', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, SD)
+        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING)
 
-def RunCBC_LSCPexampleCppStyleAPI(SD):
+def RunCBC_LSCPexampleCppStyleAPI():
     if hasattr(pywraplp.Solver, 'CBC_MIXED_INTEGER_PROGRAMMING'):
         Announce('CBC', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, SD)
+        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
 
-def RunBOP_LSCPexampleCppStyleAPI(SD):
+def RunBOP_LSCPexampleCppStyleAPI():
     if hasattr(pywraplp.Solver, 'BOP_INTEGER_PROGRAMMING'):
         Announce('BOP', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, SD)
+        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING)
 
 
 def main(unused_argv):
-    RunCBC_LSCPexampleCppStyleAPI(SD)
-    #RunSCIP_LSCPexampleCppStyleAPI(SD)
-    #RunBOP_LSCPexampleCppStyleAPI(SD)
+    RunCBC_LSCPexampleCppStyleAPI()
+    #RunSCIP_LSCPexampleCppStyleAPI()
+    #RunBOP_LSCPexampleCppStyleAPI()
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
