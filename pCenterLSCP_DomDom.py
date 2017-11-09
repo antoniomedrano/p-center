@@ -28,13 +28,11 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     """ Example of simple MCLP program with the C++ style API."""
     solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
     
-
-    
-    #print sites
-    #print np.shape(sites)
     start_time = time.time()
     
-    essential = computeCoverageMatrix(SD)
+    distances, sqDistMatrix = computeDistances()
+    
+    computeCoverageMatrix(sqDistMatrix, SD)
     
     # Facility Site Variable X
     X = [None] * numSites
@@ -43,9 +41,9 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     SolveModel(solver)
     
     total_time = time.time()-start_time
-    p = solver.Objective().Value() + len(essential)
+    p = solver.Objective().Value()
     
-    displaySolution(X, essential, p, total_time)
+    displaySolution(X, p, total_time)
     
     
     
@@ -60,7 +58,7 @@ def computeCoverageMatrix(SD):
     global Nsize
     global cols
     global siteIDs
-    
+
     # Pull out just the site/demand IDs from the data
     siteIDs = sites[:,0]
     
@@ -81,9 +79,9 @@ def computeCoverageMatrix(SD):
     # Determine neighborhood of sites within 2*SD of sites (symmetric)
     C2 = (sqDistMatrix <= 4*SDsquared).astype(int)
     # NOTE: For non-symmetric problems, need to make a demand-to-demand matrix as well
-
+    
     start_time = time.time()
-    C, rows, cols, essential = dominationTrim(C, C2)
+    C, rows, cols = dominationTrim(C, C2)
     print 'Domination time = %f' % (time.time()-start_time)
 
     # shorten the facility data sets
@@ -95,7 +93,7 @@ def computeCoverageMatrix(SD):
     Nrows,Ncols = np.nonzero(C.astype(bool))
     Nsize = len(Nrows)
 
-    return np.nonzero(essential)[0]
+    return 0
 
 
 def dominationTrim(A, A2):
@@ -112,7 +110,6 @@ def dominationTrim(A, A2):
     
     rows = np.array(range(r))
     cols = np.array(range(c))
-    essential = np.zeros(c)
     
     k = 0
     
@@ -125,7 +122,7 @@ def dominationTrim(A, A2):
         C = csc_matrix(A)
         D = [set(C.indices[C.indptr[i]:C.indptr[i+1]]) for i in range(len(C.indptr)-1)]
 
-        # COLUMN DOMINATION
+        # Column domination
         # find subsets, ignoring columns that are known to already be subsets
         for i in range(c):
             if c_keeps[i]==0:
@@ -141,11 +138,8 @@ def dominationTrim(A, A2):
                 
         A = A[:,c_keeps.astype(bool)]
         cols = cols[c_keeps.astype(bool)]
-        # remaining sites to sites distance matrix
-        L = L[np.ix_(c_keeps.astype(bool), c_keeps.astype(bool))]
-
-
-        # ROW DOMINATION
+    
+        # Row Domination
         # find subsets, ignoring rows that are known to already be subsets
         # create a list of sets containing the indices of non-zero elements of each column
         R = csr_matrix(A)
@@ -165,48 +159,22 @@ def dominationTrim(A, A2):
                 
         A = A[r_keeps.astype(bool),:]
         rows = rows[r_keeps.astype(bool)]
-        # remaining demands to demands distance matrix
-        U = U[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))]        
-
-
-        # ESSENTIAL SITES
-        # Designate sites that uniquely cover certain demands as essential, requiring forced
-        # location there.
-        r_keeps = np.ones(len(rows))
-        c_keeps = np.ones(len(cols))
-        rSum = np.sum(A, axis=1)
-
-        for i in range(len(rSum)):
-            if rSum[i] == 1:
-                r_keeps[i] = 0
-                c_keeps[np.nonzero(A[i,:])] = 0
-                essential[cols[np.nonzero(A[i,:])]] = 1
         
-        A = A[np.ix_(r_keeps.astype(bool), c_keeps.astype(bool))]
-        cols = cols[c_keeps.astype(bool)]
-        rows = rows[r_keeps.astype(bool)]
-        
-        
-        # CHECK IF SHOULD REPEAT
         # Check if there was an improvement. If so, repeat.
         rnew,cnew = A.shape
         print k, rnew, cnew
-        
-        if (rnew == 0):
-            cols = rows  # make sure no problem gets formulated and solved
-            break
-        if (cnew == 0):
-            rows = cols  # make sure no problem gets formulated and solved
-            break
+                
         if (rnew == r and cnew == c):
             break
         else:
+            # remaining sites to sites distance matrix
             L = L[np.ix_(c_keeps.astype(bool), c_keeps.astype(bool))]
-            U = U[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))]        
+            # remaining demands to demands distance matrix
+            U = U[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))]
             r = rnew
-            c = cnew
+            c = cnew            
     
-    return A, rows, cols, essential
+    return A, rows, cols
     
 
 def BuildModel(solver, X):
@@ -253,7 +221,7 @@ def SolveModel(solver):
     # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
     assert solver.VerifySolution(1e-7, True)
     
-def displaySolution(X, essential, p, total_time):
+def displaySolution(X, p, total_time):
 
     print 'Total problem solved in %f seconds' % total_time
     print
@@ -265,12 +233,9 @@ def displaySolution(X, essential, p, total_time):
     for j in range(numSites):
         if (X[j].SolutionValue() == 1.0):
             print "Site selected %d" % int(siteIDs[j])
-    for j in essential:
-        #print j
-        print "Site selected %d*" % int(sites[j,0])
             
     # plot solution
-    plot.plotSolutionE(sites, essential, X, cols, SD)
+    plot.plotSolution(sites, X, cols, SD)
     
             
 def read_problem(file):

@@ -27,15 +27,13 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     """ Example of simple MCLP program with the C++ style API."""
     solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
     
-    # Create a global version of:
-    # Facility Site Variable X
-    X = [None] * numSites
-    
-    #print sites
-    #print np.shape(sites)
     start_time = time.time()
     
     computeCoverageMatrix(SD)
+
+    # Facility Site Variable X
+    X = [None] * numSites
+
     BuildModel(solver, X)
     SolveModel(solver)
     
@@ -52,18 +50,15 @@ def computeCoverageMatrix(SD):
     global Nrows
     global Ncols
     global Nsize
-    global facilityIDs
-    
-    # for now, all demands are also sites
-    allFD3 = True
+    global siteIDs
     
     # Pull out just the site/demand IDs from the data
-    facilityIDs = sites[:,0]
+    siteIDs = sites[:,0]
     
     # Pull out just the coordinates from the data
     xyPointArray = sites[:,[1,2]]
     #A = [xyPointArray[i][:] for i in demandIDs]
-    #B = [xyPointArray[j][:] for j in facilityIDs]
+    #B = [xyPointArray[j][:] for j in siteIDs]
     A = xyPointArray
     B = A
     #print A
@@ -115,7 +110,7 @@ def BuildModel(solver, X):
     
     # initialize the X variables as Binary Integer (Boolean) variables
     for j in range(numSites):
-        name = "X,%d" % facilityIDs[j]
+        name = "X,%d" % siteIDs[j]
         X[j] = solver.BoolVar(name)
         # add the site location variables to the objective function
         objective.SetCoefficient(X[j],1)
@@ -156,7 +151,7 @@ def displaySolution(X, p, total_time):
     print    
     for j in range(numSites):
         if (X[j].SolutionValue() == 1.0):
-            print "Site selected %d" % int(facilityIDs[j])
+            print "Site selected %d" % int(siteIDs[j])
     
     # plot solution
     plot.plotSolution(sites, X, range(numSites), SD)

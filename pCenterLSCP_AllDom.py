@@ -28,13 +28,11 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     """ Example of simple MCLP program with the C++ style API."""
     solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
     
-
-    
-    #print sites
-    #print np.shape(sites)
     start_time = time.time()
     
-    essential = computeCoverageMatrix(SD)
+    distances, sqDistMatrix = computeDistances()
+    
+    computeCoverageMatrix(sqDistMatrix, SD)
     
     # Facility Site Variable X
     X = [None] * numSites
@@ -60,7 +58,7 @@ def computeCoverageMatrix(SD):
     global Nsize
     global cols
     global siteIDs
-    
+
     # Pull out just the site/demand IDs from the data
     siteIDs = sites[:,0]
     
