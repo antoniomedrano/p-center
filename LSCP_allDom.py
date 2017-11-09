@@ -34,7 +34,7 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     #print np.shape(sites)
     start_time = time.time()
     
-    computeCoverageMatrix(SD)
+    essential = computeCoverageMatrix(SD)
     
     # Facility Site Variable X
     X = [None] * numSites
@@ -43,9 +43,9 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     SolveModel(solver)
     
     total_time = time.time()-start_time
-    p = solver.Objective().Value()
+    p = solver.Objective().Value() + len(essential)
     
-    displaySolution(X, p, total_time)
+    displaySolution(X, essential, p, total_time)
     
     
     
@@ -59,18 +59,18 @@ def computeCoverageMatrix(SD):
     global Ncols
     global Nsize
     global cols
-    global facilityIDs
+    global siteIDs
     
     # for now, all demands are also sites
     allFD3 = True
     
     # Pull out just the site/demand IDs from the data
-    facilityIDs = sites[:,0]
+    siteIDs = sites[:,0]
     
     # Pull out just the coordinates from the data
     xyPointArray = sites[:,[1,2]]
     #A = [xyPointArray[i][:] for i in demandIDs]
-    #B = [xyPointArray[j][:] for j in facilityIDs]
+    #B = [xyPointArray[j][:] for j in siteIDs]
     A = xyPointArray
     #print A
     
@@ -86,19 +86,19 @@ def computeCoverageMatrix(SD):
     # NOTE: For non-symmetric problems, need to make a demand-to-demand matrix as well
 
     start_time = time.time()
-    C, rows, cols = dominationTrim(C, C2)
+    C, rows, cols, essential = dominationTrim(C, C2)
     print 'Domination time = %f' % (time.time()-start_time)
 
     # shorten the facility data sets
-    facilityIDs = facilityIDs[cols]
-    numSites = len(facilityIDs)
+    siteIDs = siteIDs[cols]
+    numSites = len(siteIDs)
     numDemands = len(rows)
 
     # Convert coverage to sparse matrix
     Nrows,Ncols = np.nonzero(C.astype(bool))
     Nsize = len(Nrows)
 
-    return 0
+    return np.nonzero(essential)[0]
 
 
 def dominationTrim(A, A2):
@@ -115,6 +115,7 @@ def dominationTrim(A, A2):
     
     rows = np.array(range(r))
     cols = np.array(range(c))
+    essential = np.zeros(c)
     
     k = 0
     
@@ -133,7 +134,6 @@ def dominationTrim(A, A2):
             if c_keeps[i]==0:
                 continue
             col1 = D[i]
-            #for j in range(i+1,c):
             for j in np.nonzero(L[:,i])[0]:
                 col2 = D[j]
                 if col2.issubset(col1):
@@ -144,7 +144,10 @@ def dominationTrim(A, A2):
                 
         A = A[:,c_keeps.astype(bool)]
         cols = cols[c_keeps.astype(bool)]
-    
+        # remaining sites to sites distance matrix
+        L = L[np.ix_(c_keeps.astype(bool), c_keeps.astype(bool))]
+
+
         # Row Domination
         # find subsets, ignoring rows that are known to already be subsets
         # create a list of sets containing the indices of non-zero elements of each column
@@ -155,7 +158,6 @@ def dominationTrim(A, A2):
             if r_keeps[i]==0:
                 continue
             row1 = S[i]
-            #for j in range(i+1,r):
             for j in np.nonzero(U[i,:])[0]:
                 row2 = S[j]
                 if row2.issubset(row1):
@@ -166,49 +168,51 @@ def dominationTrim(A, A2):
                 
         A = A[r_keeps.astype(bool),:]
         rows = rows[r_keeps.astype(bool)]
+        # remaining demands to demands distance matrix
+        U = U[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))]        
+
+
+        # Essential Sites
+        # Designate sites that uniquely cover certain demands as essential, requiring forced
+        # location there.
+        r_keeps = np.ones(len(rows))
+        c_keeps = np.ones(len(cols))
+        rSum = np.sum(A, axis=1)
+
+        for i in range(len(rSum)):
+            if rSum[i] == 1:
+                r_keeps[i] = 0
+                c_keeps[np.nonzero(A[i,:])] = 0
+                essential[cols[np.nonzero(A[i,:])]] = 1
         
-        # # Essential Sites
-        # # Designate sites that uniquely cover certain demands as essential, requiring forced
-        # # location there.
-        # rnew,cnew = A.shape
-        # r_keeps = np.ones(rnew)
-        # rSum = np.sum(A, axis=1)
-        #
-        # for i in range(rnew):
-        #     if rSum[i] == 1:
-        #         r_keeps[i] = 0
-                
-        
-        
-        # print rSum
+        A = A[np.ix_(r_keeps.astype(bool), c_keeps.astype(bool))]
+        cols = cols[c_keeps.astype(bool)]
+        rows = rows[r_keeps.astype(bool)]
         
         # Check if there was an improvement. If so, repeat.
         rnew,cnew = A.shape
         print k, rnew, cnew
         
+        if (rnew == 0 or cnew == 0):
+            break
         if (rnew == r and cnew == c):
             break
         else:
-            # remaining sites to sites distance matrix
-            L = np.tril(L[np.ix_(c_keeps.astype(bool), c_keeps.astype(bool))],-1)
-            # remainin demands to demands distance matrix
-            U = np.triu(U[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))],1)
+            L = L[np.ix_(c_keeps.astype(bool), c_keeps.astype(bool))]
+            U = U[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))]        
             r = rnew
             c = cnew
     
-    return A, rows, cols
+    return A, rows, cols, essential
     
 
 def BuildModel(solver, X):
     
     infinity = solver.infinity()
-    numForced = 0
     
     # DECLARE CONSTRAINTS:
     # declare demand coverage constraints (binary integer: 1 if UNCOVERED, 0 if COVERED)
     c1 = [None]*numDemands
-    # declare the forced facility location constraints
-    c2 = [None]*numForced
     
     # declare the objective
     objective = solver.Objective()
@@ -216,7 +220,7 @@ def BuildModel(solver, X):
     
     # initialize the X variables as Binary Integer (Boolean) variables
     for j in range(numSites):
-        name = "X,%d" % facilityIDs[j]
+        name = "X,%d" % siteIDs[j]
         X[j] = solver.BoolVar(name)
         # add the site location variables to the objective function
         objective.SetCoefficient(X[j],1)
@@ -225,11 +229,6 @@ def BuildModel(solver, X):
     for i in range(numDemands):
         # Covering constraints
         c1[i] = solver.Constraint(1, solver.infinity())
-
-    # if facility is fixed into the solution, add a constraint to make it so
-    for k in range(numForced):
-          c2[k] = solver.Constraint(1,1)
-          c2[k].SetCoefficient(X[forcedFacilities[k]],1)
 
     # add facility coverages to the coverage constraints
     for k in range(Nsize):
@@ -251,7 +250,7 @@ def SolveModel(solver):
     # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
     assert solver.VerifySolution(1e-7, True)
     
-def displaySolution(X, p, total_time):
+def displaySolution(X, essential, p, total_time):
 
     print 'Total problem solved in %f seconds' % total_time
     print
@@ -262,10 +261,13 @@ def displaySolution(X, p, total_time):
     print    
     for j in range(numSites):
         if (X[j].SolutionValue() == 1.0):
-            print "Site selected %d" % int(facilityIDs[j])
+            print "Site selected %d" % int(siteIDs[j])
+    for j in essential:
+        #print j
+        print "Site selected %d*" % int(sites[j,0])
             
     # plot solution
-    plot.plotSolution(sites, X, cols, SD)
+    plot.plotSolutionE(sites, essential, X, cols, SD)
     
             
 def read_problem(file):
