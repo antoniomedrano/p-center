@@ -82,7 +82,7 @@ def RunLSCPCppStyleAPI(optimization_problem_type):
     print '%d LSCP distances evaluated' % iters
     print 'Total problem solved in %f seconds' % total_time
     print
-    plot.plotTradeoff(solution)
+    #plot.plotTradeoff(solution)
     
 
 def computeDistances():
@@ -124,9 +124,8 @@ def computeCoverageMatrix(sqDistMatrix, SDsquared):
     C = (sqDistMatrix <= SDsquared).astype(int)
     # Determine neighborhood of sites within 2*SD of sites (symmetric)
     C2 = (sqDistMatrix <= 4*SDsquared).astype(int)
-        
 
-    start_time = time.time()
+    # Perform column domination
     C, cols = dominationTrim(C, C2)
 
     #print siteIDs, cols
