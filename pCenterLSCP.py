@@ -31,12 +31,15 @@ def RunLSCPCppStyleAPI(optimization_problem_type):
     
     sqDistances, sqDistMatrix = computeDistances()
     
-    print '  p, SD'   
-    print '%3d, 0' % numSites
+    # p = numSites, SD = 0 is a trivial solution
+    print '  p, SD'
+    p = numSites
+    SDsquared = 0   
+    displaySolution(p, SDsquared)
     
     solution = np.empty([numSites, 2])
-    solution[:,0] = range(numSites, 0, -1)
-    solution[0,1] = 0
+    solution[:,0] = range(1, numSites+1)
+    solution[numSites-1,1] = 0
     currP = numSites
     iters = 0
     #print solution
@@ -58,29 +61,33 @@ def RunLSCPCppStyleAPI(optimization_problem_type):
         # check the output
         while (p < currP):
             currP -= 1
+            solution[currP-1,1] = SDsquared**0.5
             displaySolution(currP, SDsquared)
 
         # terminate the search when p == 1
         if (p == 2):
             p = 1
             SDsquared = np.amin(np.amax(sqDistMatrix,0))
+            solution[p-1,1] = SDsquared**0.5
             displaySolution(p, SDsquared)
             iters = i+1
             break
+        if (p == 1):
+            iters = i
+            break
         
     total_time = time.time()-start_time
+    #print solution
     print
     print '%d LSCP distances evaluated' % iters
     print 'Total problem solved in %f seconds' % total_time
     print
+    plot.plotTradeoff(solution)
     
 def computeDistances():
         
     #declare a couple variables
     global distances
-    global Nrows
-    global Ncols
-    global Nsize
     global siteIDs
     
     # Pull out just the site/demand IDs from the data
@@ -96,7 +103,6 @@ def computeDistances():
     
     # Compute the distance matrix, using the squared distance
     sqDistMatrix = cdist(A, B,'sqeuclidean')
-    print sqDistMatrix.shape
     
     # print 'Max Point-to-Point Distance = %f' % np.sqrt(np.amax(sqDistMatrix))
     # print 'Mean Point-to-Point Distance = %f' % np.sqrt(np.mean(sqDistMatrix))
@@ -170,6 +176,7 @@ def BuildModel(solver, X):
     # print
     return 0
 
+
 def SolveModel(solver):
     """Solve the problem and print the solution."""
     result_status = solver.Solve()
@@ -181,11 +188,10 @@ def SolveModel(solver):
     # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
     assert solver.VerifySolution(1e-7, True)
     
+    
 def displaySolution(p, SDsquared):
-
     # The objective value and the minimum service distance
     print '%3d, %f' % (p, SDsquared**0.5)
-    # print the selected sites
     
 
 def read_problem(file):

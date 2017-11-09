@@ -61,3 +61,34 @@ def plotSolutionE(sites, essential, X, cols, SD):
     
     plt.axis('equal')
     plt.show()
+    
+def plotTradeoff(solution):
+
+    mSize = 2
+    rows, cols = solution.shape
+
+    plt.figure(figsize=(10,6))
+    plt.step(solution[:,1], solution[:,0], where='pre')
+    plt.plot(solution[:,1], solution[:,0], 'ko', markersize = mSize)
+    plt.ylim(0, solution[rows-1,0]+1)
+    #plt.xlim(0, solution[0,1]+1)
+    plt.xscale('log')
+    plt.ylabel('p-facilities')
+    plt.xlabel('Service Distance (log scale)')    
+    plt.title('Complete P-Center Trade-Off Frontier')
+    plt.show
+    
+    plt.figure(figsize=(10,6))
+    plt.step(solution[:,0], solution[:,1], where='post')
+    plt.plot(solution[:,0], solution[:,1], 'ko', markersize = mSize)
+    plt.xlim(0, solution[rows-1,0]+1)
+    #plt.ylim(0, solution[0,1]+1)
+    plt.yscale('log')
+    plt.xlabel('p-facilities')
+    plt.ylabel('Service Distance (log scale)')
+    plt.title('Complete P-Center Trade-Off Frontier')
+    #plt.axis('equal')
+    plt.show()
+
+
+
