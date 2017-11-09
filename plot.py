@@ -19,19 +19,23 @@ import numpy as np
 
 def plotData(sites):
     
+    mSize = 4
+    
     plt.figure(figsize=(6,6))
-    plt.plot(sites[:,1], sites[:,2], 'ko')
+    plt.plot(sites[:,1], sites[:,2], 'ko', markersize = mSize)
     plt.axis('equal')
     plt.show()
 
 def plotSolution(sites, X, cols, SD):
     
+    mSize = 4
+    
     plt.figure(figsize=(6,6))
-    plt.plot(sites[:,1], sites[:,2], 'ko')
+    plt.plot(sites[:,1], sites[:,2], 'ko', markersize = mSize)
     numSites = len(X)
     for j in range(numSites):
         if (X[j].SolutionValue() == 1.0):
-            plt.plot(sites[cols[j],1], sites[cols[j],2], 'bo')
+            plt.plot(sites[cols[j],1], sites[cols[j],2], 'bo', markersize = mSize)
             circle = plt.Circle((sites[cols[j],1], sites[cols[j],2]), SD, color='b', fill=False)
             plt.gcf().gca().add_artist(circle)
     
@@ -40,16 +44,18 @@ def plotSolution(sites, X, cols, SD):
     
 def plotSolutionE(sites, essential, X, cols, SD):
     
+    mSize = 4
+    
     plt.figure(figsize=(6,6))
-    plt.plot(sites[:,1], sites[:,2], 'ko')
+    plt.plot(sites[:,1], sites[:,2], 'ko', markersize = mSize)
     numSites = len(X)
     for j in range(numSites):
         if (X[j].SolutionValue() == 1.0):
-            plt.plot(sites[cols[j],1], sites[cols[j],2], 'bo')
+            plt.plot(sites[cols[j],1], sites[cols[j],2], 'bo', markersize = mSize)
             circle = plt.Circle((sites[cols[j],1], sites[cols[j],2]), SD, color='b', fill=False)
             plt.gcf().gca().add_artist(circle)
     for j in essential:
-        plt.plot(sites[j,1], sites[j,2], 'ro')
+        plt.plot(sites[j,1], sites[j,2], 'ro', markersize = mSize)
         circle = plt.Circle((sites[j,1], sites[j,2]), SD, color='b', fill=False)
         plt.gcf().gca().add_artist(circle)
     
