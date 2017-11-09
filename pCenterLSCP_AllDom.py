@@ -240,6 +240,7 @@ def BuildModel(solver, X):
     print
     return 0
 
+
 def SolveModel(solver):
     """Solve the problem and print the solution."""
     result_status = solver.Solve()
@@ -251,24 +252,11 @@ def SolveModel(solver):
     # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
     assert solver.VerifySolution(1e-7, True)
     
-def displaySolution(X, essential, p, total_time):
-
-    print 'Total problem solved in %f seconds' % total_time
-    print
-    # The objective value of the solution.
-    print 'p = %d' % p
-    print 'SD = %f' % SD
+    
+def displaySolution(p, SDsquared):
+    # The objective value and the minimum service distance
+    print '%3d, %f' % (p, SDsquared**0.5)
     # print the selected sites
-    print    
-    for j in range(numSites):
-        if (X[j].SolutionValue() == 1.0):
-            print "Site selected %d" % int(siteIDs[j])
-    for j in essential:
-        #print j
-        print "Site selected %d*" % int(sites[j,0])
-            
-    # plot solution
-    plot.plotSolutionE(sites, essential, X, cols, SD)
     
             
 def read_problem(file):
@@ -287,15 +275,12 @@ def read_problem(file):
         
     numSites = sites.shape[0]    
     numDemands = numSites
-    
     # plot.plotData(sites)
-    
     print '%d locations' % numSites
-    print 'Finished Reading File!'
 
 
 def Announce(solver, api_type):
-    print ('---- Integer programming example with ' + solver + ' (' +
+    print ('---- P-Center LSCP_AllDom with ' + solver + ' (' +
         api_type + ') -----')
 
 def RunSCIP_LSCPExampleCppStyleAPI(SD):
@@ -322,15 +307,15 @@ def main(unused_argv):
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
 if __name__ == '__main__':
-  if len(sys.argv) > 2 and len(sys.argv) <= 3:
-    file = './data/' + sys.argv[2]
-    SD = float(sys.argv[1])
+  if len(sys.argv) > 1 and len(sys.argv) <= 2:
+    file = './data/' + sys.argv[1]
+    print
     print "Problem instance from: ", file
     read_problem(file)
     main(None)
-  elif len(sys.argv) > 1 and len(sys.argv) <= 2:
-    SD = float(sys.argv[1])
+  elif len(sys.argv) > 0 and len(sys.argv) <= 1:
     file = './data/swain.dat'
+    print
     print "Problem instance from: ", file
     read_problem(file)
     main(None)
