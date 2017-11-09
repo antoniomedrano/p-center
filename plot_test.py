@@ -13,6 +13,8 @@ circle1 = plt.Circle((6, .6), 0.5, color='k', fill=False)
 plt.gcf().gca().add_artist(circle1)
 circle2 = plt.Circle((5, .5), 0.5, color='b', fill=False)
 plt.gcf().gca().add_artist(circle2)
+plt.plot([.3, .4], [.3, .4], color='green', marker='o',
+     markerfacecolor='blue', markersize=12)
 plt.xlabel('Time')
 plt.ylabel('Amplitude')
 plt.legend()

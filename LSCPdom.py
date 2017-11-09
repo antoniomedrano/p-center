@@ -207,12 +207,16 @@ def read_problem(file):
     try:
         if (file[-3:].lower() == "dat"):
             sites = readDataFiles.readDat(file)
+        elif (file[-3:].lower() == "tsp"):
+            sites = readDataFiles.readTSP(file)
     except IOError:
         print 'Error reading file'
         raise
         
     numSites = sites.shape[0]    
     numDemands = numSites
+    
+    # plot.plotData(sites)
     
     print '%d locations' % numSites
     print 'Finished Reading File!'
@@ -247,14 +251,14 @@ def main(unused_argv):
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
 if __name__ == '__main__':
   if len(sys.argv) > 2 and len(sys.argv) <= 3:
-    file = sys.argv[2]
+    file = './data/' + sys.argv[2]
     SD = float(sys.argv[1])
     print "Problem instance from: ", file
     read_problem(file)
     main(None)
   elif len(sys.argv) > 1 and len(sys.argv) <= 2:
     SD = float(sys.argv[1])
-    file = r'./data/swain.dat'
+    file = './data/swain.dat'
     print "Problem instance from: ", file
     read_problem(file)
     main(None)

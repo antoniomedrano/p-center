@@ -128,7 +128,7 @@ def dominationTrim(A, A2):
         C = csc_matrix(A)
         D = [set(C.indices[C.indptr[i]:C.indptr[i+1]]) for i in range(len(C.indptr)-1)]
 
-        # Column domination
+        # COLUMN DOMINATION
         # find subsets, ignoring columns that are known to already be subsets
         for i in range(c):
             if c_keeps[i]==0:
@@ -148,7 +148,7 @@ def dominationTrim(A, A2):
         L = L[np.ix_(c_keeps.astype(bool), c_keeps.astype(bool))]
 
 
-        # Row Domination
+        # ROW DOMINATION
         # find subsets, ignoring rows that are known to already be subsets
         # create a list of sets containing the indices of non-zero elements of each column
         R = csr_matrix(A)
@@ -172,7 +172,7 @@ def dominationTrim(A, A2):
         U = U[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))]        
 
 
-        # Essential Sites
+        # ESSENTIAL SITES
         # Designate sites that uniquely cover certain demands as essential, requiring forced
         # location there.
         r_keeps = np.ones(len(rows))
@@ -189,11 +189,17 @@ def dominationTrim(A, A2):
         cols = cols[c_keeps.astype(bool)]
         rows = rows[r_keeps.astype(bool)]
         
+        
+        # CHECK IF SHOULD REPEAT
         # Check if there was an improvement. If so, repeat.
         rnew,cnew = A.shape
         print k, rnew, cnew
         
-        if (rnew == 0 or cnew == 0):
+        if (rnew == 0):
+            cols = rows  # make sure no problem gets formulated and solved
+            break
+        if (cnew == 0):
+            rows = cols  # make sure no problem gets formulated and solved
             break
         if (rnew == r and cnew == c):
             break
@@ -278,12 +284,16 @@ def read_problem(file):
     try:
         if (file[-3:].lower() == "dat"):
             sites = readDataFiles.readDat(file)
+        elif (file[-3:].lower() == "tsp"):
+            sites = readDataFiles.readTSP(file)
     except IOError:
         print 'Error reading file'
         raise
         
     numSites = sites.shape[0]    
     numDemands = numSites
+    
+    # plot.plotData(sites)
     
     print '%d locations' % numSites
     print 'Finished Reading File!'
@@ -318,14 +328,14 @@ def main(unused_argv):
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
 if __name__ == '__main__':
   if len(sys.argv) > 2 and len(sys.argv) <= 3:
-    file = sys.argv[2]
+    file = './data/' + sys.argv[2]
     SD = float(sys.argv[1])
     print "Problem instance from: ", file
     read_problem(file)
     main(None)
   elif len(sys.argv) > 1 and len(sys.argv) <= 2:
     SD = float(sys.argv[1])
-    file = r'./data/swain.dat'
+    file = './data/swain.dat'
     print "Problem instance from: ", file
     read_problem(file)
     main(None)
