@@ -39,7 +39,7 @@ def RunLSCPCppStyleAPI(optimization_problem_type, file):
     
     solution = np.empty([numSites, 2])
     solution[:,0] = range(1, numSites+1)
-    solution[numSites-1,1] = 0
+    solution[p-1,1] = 0
     currP = numSites
     iters = 0
     #print solution
