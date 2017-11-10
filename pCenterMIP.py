@@ -22,72 +22,34 @@ from scipy.sparse import csc_matrix
 from scipy.spatial.distance import cdist
 from ortools.linear_solver import pywraplp
 
-def RunLSCPCppStyleAPI(optimization_problem_type, file):
+def RunMIPCppStyleAPI(optimization_problem_type, SD):
     
     """ Example of simple MCLP program with the C++ style API."""
     solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
     
     start_time = time.time()
     
-    sqDistances, sqDistMatrix = computeDistances()
-    
-    # p = numSites, SD = 0 is a trivial solution
-    print '  p, SD'
-    p = numSites
-    SDsquared = 0   
-    displaySolution(p, SDsquared)
-    
-    solution = np.empty([numSites, 2])
-    solution[:,0] = range(1, numSites+1)
-    solution[numSites-1,1] = 0
-    currP = numSites
-    iters = 0
-    #print solution
-    
-    for i in range(1,len(sqDistances)):
-        SDsquared = sqDistances[i]
-        computeCoverageMatrix(sqDistMatrix, SDsquared)
-    
-        # Facility Site Variable X
-        X = [None] * numSites
+    computeCoverageMatrix(SD)
 
-        BuildModel(solver, X)
-        SolveModel(solver)
+    # Facility Site Variable X
+    X = [None] * numSites
 
-        # get the solution and clear the solver
-        p = solver.Objective().Value()
-        solver.Clear()
-        
-        # check the output
-        while (p < currP):
-            currP -= 1
-            solution[currP-1,1] = SDsquared**0.5
-            displaySolution(currP, SDsquared)
-
-        # terminate the search when p == 1
-        if (p == 2):
-            p = 1
-            SDsquared = np.amin(np.amax(sqDistMatrix,0))
-            solution[p-1,1] = SDsquared**0.5
-            displaySolution(p, SDsquared)
-            iters = i+1
-            break
-        if (p == 1):
-            iters = i
-            break
-        
+    BuildModel(solver, X)
+    SolveModel(solver)
+    
     total_time = time.time()-start_time
-    #print solution
-    print
-    print '%d LSCP distances evaluated' % iters
-    print 'Total problem solved in %f seconds' % total_time
-    print
-    plot.plotTradeoff(file, solution)
+    p = solver.Objective().Value()
     
-def computeDistances():
+    displaySolution(X, p, total_time)
+    
+    
+def computeCoverageMatrix(SD):
         
     #declare a couple variables
     global distances
+    global Nrows
+    global Ncols
+    global Nsize
     global siteIDs
     
     # Pull out just the site/demand IDs from the data
@@ -103,13 +65,11 @@ def computeDistances():
     
     # Compute the distance matrix, using the squared distance
     sqDistMatrix = cdist(A, B,'sqeuclidean')
-    
     # print 'Max Point-to-Point Distance = %f' % np.sqrt(np.amax(sqDistMatrix))
     # print 'Mean Point-to-Point Distance = %f' % np.sqrt(np.mean(sqDistMatrix))
     # print np.shape(sqDistMatrix)
     #
-    sqDistances = np.unique(sqDistMatrix)
-    
+    distances = np.unique(sqDistMatrix)
     # print np.size(distances)
     #
     # colmax = np.amax(sqDistMatrix,0)
@@ -124,16 +84,9 @@ def computeDistances():
     # print "The site of the minmax is"
     # print np.where(colmax==minmax)[0]+1
     
-    return sqDistances, sqDistMatrix
-    
+    SDsquared = SD*SD
+    # TwoSDsquared = 4*SDsquared
 
-def computeCoverageMatrix(sqDistMatrix, SDsquared):
-        
-    #declare a couple variables
-    global Nrows
-    global Ncols
-    global Nsize
-    
     # Determine neighborhood of demands within SD of sites
     C = (sqDistMatrix <= SDsquared).astype(int)
         
@@ -171,11 +124,10 @@ def BuildModel(solver, X):
     for k in range(Nsize):
         c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
     
-    # print 'Number of variables = %d' % solver.NumVariables()
-    # print 'Number of constraints = %d' % solver.NumConstraints()
-    # print
+    print 'Number of variables = %d' % solver.NumVariables()
+    print 'Number of constraints = %d' % solver.NumConstraints()
+    print
     return 0
-
 
 def SolveModel(solver):
     """Solve the problem and print the solution."""
@@ -188,10 +140,21 @@ def SolveModel(solver):
     # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
     assert solver.VerifySolution(1e-7, True)
     
+def displaySolution(X, p, total_time):
+
+    print 'Total problem solved in %f seconds' % total_time
+    print
+    # The objective value of the solution.
+    print 'p = %d' % p
+    print 'SD = %f' % SD
+    # print the selected sites
+    print    
+    for j in range(numSites):
+        if (X[j].SolutionValue() == 1.0):
+            print "Site selected %d" % int(siteIDs[j])
     
-def displaySolution(p, SDsquared):
-    # The objective value and the minimum service distance
-    print '%3d, %f' % (p, SDsquared**0.5)
+    # plot solution
+    plot.plotSolution(sites, X, range(numSites), SD)
     
 
 def read_problem(file):
@@ -210,50 +173,53 @@ def read_problem(file):
         
     numSites = sites.shape[0]    
     numDemands = numSites
-    # plot.plotData(sites)
-    print '%d locations' % numSites
     
+    #plot.plotData(sites)
+    
+    print '%d locations' % numSites
+    print 'Finished Reading File!'
 
-def Announce(solver, api_type, file):
-    print ('---- P-Center LSCP with ' + solver + ' (' +
-        api_type + ' on ' + file + ') -----')
 
-def RunSCIP_LSCPexampleCppStyleAPI(file):
+def Announce(solver, api_type):
+    print ('---- Integer programming example with ' + solver + ' (' +
+        api_type + ') -----')
+
+def RunSCIP_MIPExampleCppStyleAPI(SD):
     if hasattr(pywraplp.Solver, 'SCIP_MIXED_INTEGER_PROGRAMMING'):
-        Announce('SCIP', 'C++ style API', file)
-        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, file)
+        Announce('SCIP', 'C++ style API')
+        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, SD)
 
-def RunCBC_LSCPexampleCppStyleAPI(file):
+def RunCBC_MIPexampleCppStyleAPI(SD):
     if hasattr(pywraplp.Solver, 'CBC_MIXED_INTEGER_PROGRAMMING'):
-        Announce('CBC', 'C++ style API', file)
-        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, file)
+        Announce('CBC', 'C++ style API')
+        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, SD)
 
-def RunBOP_LSCPexampleCppStyleAPI(file):
+def RunBOP_MIPexampleCppStyleAPI(SD):
     if hasattr(pywraplp.Solver, 'BOP_INTEGER_PROGRAMMING'):
-        Announce('BOP', 'C++ style API', file)
-        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, file)
+        Announce('BOP', 'C++ style API')
+        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, SD)
 
 
-def main(file):
-    RunCBC_LSCPexampleCppStyleAPI(file)
-    #RunSCIP_LSCPexampleCppStyleAPI(file)
-    #RunBOP_LSCPexampleCppStyleAPI(file)
+def main(unused_argv):
+    RunCBC_MIPexampleCppStyleAPI(SD)
+    #RunSCIP_MIPexampleCppStyleAPI(SD)
+    #RunBOP_MIPexampleCppStyleAPI(SD)
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
 if __name__ == '__main__':
-  if len(sys.argv) > 1 and len(sys.argv) <= 2:
-    file = './data/' + sys.argv[1]
-    print
+  if len(sys.argv) > 2 and len(sys.argv) <= 3:
+    file = './data/' + sys.argv[2]
+    SD = float(sys.argv[1])
     print "Problem instance from: ", file
     read_problem(file)
-    main(sys.argv[1])
-  elif len(sys.argv) > 0 and len(sys.argv) <= 1:
+    main(None)
+  elif len(sys.argv) > 1 and len(sys.argv) <= 2:
+    SD = float(sys.argv[1])
     file = './data/swain.dat'
-    print
     print "Problem instance from: ", file
     read_problem(file)
-    main('swain.dat')
+    main(None)
   else:
     print "Please Pass: Service Distance; Data to Use"
     print "Problem not executed!"

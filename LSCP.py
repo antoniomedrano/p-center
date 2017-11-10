@@ -174,7 +174,7 @@ def read_problem(file):
     numSites = sites.shape[0]    
     numDemands = numSites
     
-    # plot.plotData(sites)
+    #plot.plotData(sites)
     
     print '%d locations' % numSites
     print 'Finished Reading File!'
