@@ -42,7 +42,10 @@ def RunMIPCppStyleAPI(optimization_problem_type, p):
     total_time = time.time()-start_time
     SDmin = solver.Objective().Value()
     
-    displaySolution(Y, p, SDmin, total_time)
+    print
+    print 'Total problem solved in %f seconds' % total_time
+    print
+    #displaySolution(Y, p, SDmin, total_time)
     
     
 def computeCoverageMatrix():
@@ -150,9 +153,9 @@ def BuildModel(solver, X, Y, Z, p, d):
     # for k in range(Nsize):
     #     c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
     
-    print 'Number of variables = %d' % solver.NumVariables()
-    print 'Number of constraints = %d' % solver.NumConstraints()
-    print
+    # print 'Number of variables = %d' % solver.NumVariables()
+    # print 'Number of constraints = %d' % solver.NumConstraints()
+    # print
     return 0
 
 def SolveModel(solver):
@@ -166,8 +169,11 @@ def SolveModel(solver):
     # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
     assert solver.VerifySolution(1e-7, True)
     
-def displaySolution(Y, p, SDmin, total_time):
+def displaySolution(p, SDmin):
 
+    # The objective value and the minimum service distance
+    print '%3d, %f' % (p, SDmin)
+    
     print 'Total problem solved in %f seconds' % total_time
     print
     # The objective value of the solution.
@@ -180,7 +186,7 @@ def displaySolution(Y, p, SDmin, total_time):
             print "Site selected %d" % int(siteIDs[j])
     
     # plot solution
-    plot.plotSolution(sites, Y, range(numSites), SDmin)
+    # plot.plotSolution(sites, Y, range(numSites), SDmin)
     
 
 def read_problem(file):
@@ -210,37 +216,36 @@ def Announce(solver, api_type):
     print ('---- P-Center MIP with ' + solver + ' (' +
         api_type + ') -----')
 
-def RunSCIP_MIPexampleCppStyleAPI(p):
+def RunSCIP_MIPexampleCppStyleAPI():
     if hasattr(pywraplp.Solver, 'SCIP_MIXED_INTEGER_PROGRAMMING'):
         Announce('SCIP', 'C++ style API')
-        RunMIPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, p)
+        RunMIPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, )
 
-def RunCBC_MIPexampleCppStyleAPI(p):
+def RunCBC_MIPexampleCppStyleAPI():
     if hasattr(pywraplp.Solver, 'CBC_MIXED_INTEGER_PROGRAMMING'):
         Announce('CBC', 'C++ style API')
-        RunMIPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, p)
+        RunMIPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, )
 
-def RunBOP_MIPexampleCppStyleAPI(p):
+def RunBOP_MIPexampleCppStyleAPI():
     if hasattr(pywraplp.Solver, 'BOP_INTEGER_PROGRAMMING'):
         Announce('BOP', 'C++ style API')
-        RunMIPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, p)
+        RunMIPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, )
 
 
 def main(unused_argv):
-    RunCBC_MIPexampleCppStyleAPI(p)
-    #RunSCIP_MIPexampleCppStyleAPI(p)
-    #RunBOP_MIPexampleCppStyleAPI(p)
+    RunCBC_MIPexampleCppStyleAPI()
+    #RunSCIP_MIPexampleCppStyleAPI()
+    #RunBOP_MIPexampleCppStyleAPI()
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
 if __name__ == '__main__':
-  if len(sys.argv) > 2 and len(sys.argv) <= 3:
-    file = './data/' + sys.argv[2]
-    p = float(sys.argv[1])
+  if len(sys.argv) > 1 and len(sys.argv) <= 2:
+    file = './data/' + sys.argv[1]
     print "Problem instance from: ", file
     read_problem(file)
     main(None)
-  elif len(sys.argv) > 1 and len(sys.argv) <= 2:
+  elif len(sys.argv) > 0 and len(sys.argv) <= 1:
     p = float(sys.argv[1])
     file = './data/swain.dat'
     print "Problem instance from: ", file
