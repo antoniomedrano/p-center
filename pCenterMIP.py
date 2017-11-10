@@ -228,8 +228,8 @@ def RunBOP_MIPexampleCppStyleAPI(p):
 
 def main(unused_argv):
     RunCBC_MIPexampleCppStyleAPI(p)
-    #RunSCIP_MIPexampleCppStyleAPI(p)
-    #RunBOP_MIPexampleCppStyleAPI(p)
+    # RunSCIP_MIPexampleCppStyleAPI(p)
+    # RunBOP_MIPexampleCppStyleAPI(p)
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """

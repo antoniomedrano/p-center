@@ -42,8 +42,10 @@ def RunMIPCppStyleAPI(optimization_problem_type):
     displaySolution(p, SDmin)
 
     for i in range(2, numSites):
+
         p = i
-        # Facility Site Variable X
+
+        # Xij assignment, Yj facility site, and Z max assignment distance variables
         X = [[None for j in range(numSites)] for i in range(numSites)]
         Y = [None] * numSites
         Z = None
@@ -51,6 +53,7 @@ def RunMIPCppStyleAPI(optimization_problem_type):
         BuildModel(solver, X, Y, Z, p, distMatrix)
         SolveModel(solver)
         SDmin = solver.Objective().Value()
+        solution[p-1,1] = SDmin
         solver.Clear()
         
         displaySolution(p, SDmin)
@@ -71,10 +74,6 @@ def RunMIPCppStyleAPI(optimization_problem_type):
 def computeDistanceMatrix():
         
     #declare a couple variables
-    global distances
-    # global Nrows
-    # global Ncols
-    # global Nsize
     global siteIDs
     
     # Pull out just the site/demand IDs from the data
@@ -88,31 +87,8 @@ def computeDistanceMatrix():
     B = A
     #print A
     
-    # Compute the distance matrix, using the squared distance
+    # Compute the distance matrix, using the euclidean distance
     distMatrix = cdist(A, B,'euclidean')
-    #
-    # distances = np.unique(distMatrix)
-    # print np.size(distances)
-    #
-    # colmax = np.amax(sqDistMatrix,0)
-    # minmax = np.amin(colmax)
-    #
-    # # print colmax
-    # print minmax**(0.5)
-    #
-    # print "The element in the distances set of the minmax is"
-    # print np.where(distances==minmax)
-    #
-    # print "The site of the minmax is"
-    # print np.where(colmax==minmax)[0]+1
-    
-    
-    # # Determine neighborhood of demands within SD of sites
-    # C = (sqDistMatrix <= SDsquared).astype(int)
-    #
-    # # Convert coverage to sparse matrix
-    # Nrows,Ncols = np.nonzero(C.astype(bool))
-    # Nsize = len(Nrows)
 
     return distMatrix
 
@@ -168,11 +144,7 @@ def BuildModel(solver, X, Y, Z, p, d):
             
             # add the assignment distance variable coefficients
             c4[i].SetCoefficient(X[i][j], -d[i,j])
-    
-    # # add facility coverages to the coverage constraints
-    # for k in range(Nsize):
-    #     c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
-    
+
     # print 'Number of variables = %d' % solver.NumVariables()
     # print 'Number of constraints = %d' % solver.NumConstraints()
     # print
