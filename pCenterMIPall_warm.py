@@ -40,22 +40,20 @@ def RunMIPCppStyleAPI(optimization_problem_type):
     SDmin = np.amin(np.amax(distMatrix,0))
     solution[p-1,1] = SDmin
     displaySolution(p, SDmin)
+    # Xij assignment, Yj facility site, and Z max assignment distance variables
+    X = [[None for j in range(numSites)] for i in range(numSites)]
     Y = [None] * numSites
     Z = None
+    BuildModel(solver, X, Y, Z, distMatrix)
 
     for i in range(2, numSites):
-        p = i
-        
-        computeCoverageMatrix(distMatrix, SDmin)
-        
-        # Xij assignment, Yj facility site, and Z max assignment distance variables
-        X = [[None for j in range(numSites)] for i in range(numSites)]
 
-        BuildModel(solver, X, Y, Z, p, distMatrix)
+        p = i
+
+        c1.SetUb(p)
         SolveModel(solver)
         SDmin = solver.Objective().Value()
         solution[p-1,1] = SDmin
-        solver.Clear()
         
         displaySolution(p, SDmin)
     
@@ -90,28 +88,12 @@ def computeDistanceMatrix():
     
     # Compute the distance matrix, using the euclidean distance
     distMatrix = cdist(A, B,'euclidean')
-    
+
     return distMatrix
-    
-    
-def computeCoverageMatrix(distMatrix, SD_UB):
-    
-    global Nrows
-    global Ncols
-    global Nsize
 
-    # Determine neighborhood of demands within SD of sites
-    C = (distMatrix <= SD_UB).astype(int)
-
-    # Convert coverage to sparse matrix
-    Nrows,Ncols = np.nonzero(C.astype(bool))
-    Nsize = len(Nrows)
+def BuildModel(solver, X, Y, Z, d):
     
-    return 0
-
-
-def BuildModel(solver, X, Y, Z, p, d):
-    
+    global c1
     infinity = solver.infinity()
     
     # DECLARE CONSTRAINTS:
@@ -129,7 +111,7 @@ def BuildModel(solver, X, Y, Z, p, d):
     objective.SetCoefficient(Z, 1)
     
     # <= constraint for locating p facilities
-    c1 = solver.Constraint(0,p)
+    c1 = solver.Constraint(0,0)
     
     for j in range(numSites):
         # initialize the Y facility location variables
@@ -151,8 +133,8 @@ def BuildModel(solver, X, Y, Z, p, d):
             name = "X,%d,%d" % (siteIDs[i], siteIDs[j])
             X[i][j] = solver.BoolVar(name)
 
-            # # set the variable coefficients of the sum(Xij) = 1 for each i
-            # c2[i].SetCoefficient(X[i][j], 1)
+            # set the variable coefficients of the sum(Xij) = 1 for each i
+            c2[i].SetCoefficient(X[i][j], 1)
            
             # add the balinsky assignment constraints
             # Yj - Xij >= 0 <--- canonical form of the assignment constraint
@@ -160,21 +142,9 @@ def BuildModel(solver, X, Y, Z, p, d):
             c3[i*numSites+j].SetCoefficient(X[i][j], -1)
             c3[i*numSites+j].SetCoefficient(Y[j], 1)
             
-            # # add the assignment distance variable coefficients
-            # c4[i].SetCoefficient(X[i][j], -d[i,j])
-    
-    # reduce the size of the formulation by only using variables with distance <= SD_UB
-    for k in range(Nsize):
-        # set the variable coefficients of the sum(Xij) = 1 for each i
-        c2[Nrows[k]].SetCoefficient(X[Nrows[k]][Ncols[k]],1)
-        # add the assignment distance variable coefficients
-        c4[Nrows[k]].SetCoefficient(X[Nrows[k]][Ncols[k]], -d[Nrows[k],Ncols[k]])
-        
-        
-    # # add facility coverages to the coverage constraints
-    # for k in range(Nsize):
-    #     c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
-    
+            # add the assignment distance variable coefficients
+            c4[i].SetCoefficient(X[i][j], -d[i,j])
+
     # print 'Number of variables = %d' % solver.NumVariables()
     # print 'Number of constraints = %d' % solver.NumConstraints()
     # print
