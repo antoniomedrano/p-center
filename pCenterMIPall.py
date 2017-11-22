@@ -40,15 +40,18 @@ def RunMIPCppStyleAPI(optimization_problem_type):
     SDmin = np.amin(np.amax(distMatrix,0))
     solution[p-1,1] = SDmin
     displaySolution(p, SDmin)
-
+    
+    # Xij assignment, Yj facility site, and Z max assignment distance variables
+    X = [[None for j in range(numSites)] for i in range(numSites)]
+    Y = [None] * numSites
+    Z = None
+    
     for i in range(2, numSites):
 
         p = i
 
-        # Xij assignment, Yj facility site, and Z max assignment distance variables
+        # reset X
         X = [[None for j in range(numSites)] for i in range(numSites)]
-        Y = [None] * numSites
-        Z = None
 
         BuildModel(solver, X, Y, Z, p, distMatrix)
         SolveModel(solver)
