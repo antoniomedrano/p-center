@@ -241,8 +241,8 @@ def RunBOP_MIPexampleCppStyleAPI():
 
 
 def main(unused_argv):
-    #RunCBC_MIPexampleCppStyleAPI()
-    RunSCIP_MIPexampleCppStyleAPI()
+    RunCBC_MIPexampleCppStyleAPI()
+    #RunSCIP_MIPexampleCppStyleAPI()
     #RunBOP_MIPexampleCppStyleAPI()
 
 
