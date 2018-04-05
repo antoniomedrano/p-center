@@ -348,13 +348,13 @@ def main(unused_argv):
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
 if __name__ == '__main__':
   if len(sys.argv) > 1 and len(sys.argv) <= 2:
-    file = './data/' + sys.argv[1]
+    file = '../data/' + sys.argv[1]
     print
     print "Problem instance from: ", file
     read_problem(file)
     main(None)
   elif len(sys.argv) > 0 and len(sys.argv) <= 1:
-    file = './data/swain.dat'
+    file = '../data/swain.dat'
     print
     print "Problem instance from: ", file
     read_problem(file)

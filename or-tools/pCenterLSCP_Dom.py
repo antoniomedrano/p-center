@@ -22,7 +22,7 @@ from scipy.sparse import csc_matrix
 from scipy.spatial.distance import cdist
 from ortools.linear_solver import pywraplp
 
-def RunLSCPCppStyleAPI(optimization_problem_type, file):
+def RunLSCPCppStyleAPI(optimization_problem_type):
     
     """ Example of simple MCLP program with the C++ style API."""
     solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
@@ -82,16 +82,13 @@ def RunLSCPCppStyleAPI(optimization_problem_type, file):
     print '%d LSCP distances evaluated' % iters
     print 'Total problem solved in %f seconds' % total_time
     print
-    plot.plotTradeoff(file, solution)
+    #plot.plotTradeoff(solution)
     
+
 def computeDistances():
         
     #declare a couple variables
     global distances
-    global siteIDs
-    
-    # Pull out just the site/demand IDs from the data
-    siteIDs = sites[:,0]
     
     # Pull out just the coordinates from the data
     xyPointArray = sites[:,[1,2]]
@@ -103,45 +100,85 @@ def computeDistances():
     
     # Compute the distance matrix, using the squared distance
     sqDistMatrix = cdist(A, B,'sqeuclidean')
-    
-    # print 'Max Point-to-Point Distance = %f' % np.sqrt(np.amax(sqDistMatrix))
-    # print 'Mean Point-to-Point Distance = %f' % np.sqrt(np.mean(sqDistMatrix))
-    # print np.shape(sqDistMatrix)
-    #
+
     sqDistances = np.unique(sqDistMatrix)
     
-    # print np.size(distances)
-    #
-    # colmax = np.amax(sqDistMatrix,0)
-    # minmax = np.amin(colmax)
-    #
-    # # print colmax
-    # print minmax**(0.5)
-    #
-    # print "The element in the distances set of the minmax is"
-    # print np.where(distances==minmax)
-    #
-    # print "The site of the minmax is"
-    # print np.where(colmax==minmax)[0]+1
-    
     return sqDistances, sqDistMatrix
+        
     
-
 def computeCoverageMatrix(sqDistMatrix, SDsquared):
         
     #declare a couple variables
+    global numDemands
+    global numSites
     global Nrows
     global Ncols
     global Nsize
-    
+    global cols
+    global siteIDs
+
+    # Pull out just the site/demand IDs from the data
+    siteIDs = sites[:,0]
+
     # Determine neighborhood of demands within SD of sites
     C = (sqDistMatrix <= SDsquared).astype(int)
-        
+    # Determine neighborhood of sites within 2*SD of sites (symmetric)
+    C2 = (sqDistMatrix <= 4*SDsquared).astype(int)
+
+    # Perform column domination
+    C, cols = dominationTrim(C, C2)
+
+    #print siteIDs, cols
+    # shorten the facility data sets
+    siteIDs = [siteIDs[j] for j in cols]
+    numSites = len(siteIDs)
+
     # Convert coverage to sparse matrix
     Nrows,Ncols = np.nonzero(C.astype(bool))
     Nsize = len(Nrows)
 
     return 0
+
+
+def dominationTrim(A, A2):
+    
+    r,c = A.shape
+    c_keeps = np.ones(c)
+    cols = np.array(range(c))
+    
+    # lower triangle of coverage matrix for checking only columns within 2*SD
+    # Explanation:
+    # looking down each column, each row with a 1 represents a site within 2*SD of that site
+    # using tril means you don't check backwards
+    B = np.tril(A2,-1)
+    
+    # start_time = time.time()
+    # create a list of sets containing the indices of non-zero elements of each column
+    C = csc_matrix(A)
+    D = [set(C.indices[C.indptr[i]:C.indptr[i+1]]) for i in range(len(C.indptr)-1)]
+    # print 'Matrix to List of Sets CSC Time = %f' % (time.time()-start_time)
+    
+    # find subsets, ignoring columns that are known to already be subsets
+    for i in cols:
+        if c_keeps[i]==0:
+            continue
+        col1 = D[i]
+        for j in np.nonzero(B[:,i])[0]:
+            # I tried `if keeps[j]==false: continue` here, but that was slower
+            # if keeps[j]==False: continue
+            col2 = D[j]
+            if col2.issubset(col1):
+                c_keeps[j] = 0
+            elif col1.issubset(col2):
+                c_keeps[i] = 0
+                break
+    
+    #Z = A[np.ix_(c_keeps.astype(bool),c_keeps.astype(bool))]
+    A = A[:,c_keeps.astype(bool)]
+    cols = cols[c_keeps.astype(bool)]
+    
+    return A, cols
+    
 
 def BuildModel(solver, X):
     
@@ -175,8 +212,8 @@ def BuildModel(solver, X):
     # print 'Number of constraints = %d' % solver.NumConstraints()
     # print
     return 0
-
-
+    
+    
 def SolveModel(solver):
     """Solve the problem and print the solution."""
     result_status = solver.Solve()
@@ -188,7 +225,7 @@ def SolveModel(solver):
     # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
     assert solver.VerifySolution(1e-7, True)
     
-    
+
 def displaySolution(p, SDsquared):
     # The objective value and the minimum service distance
     print '%3d, %f' % (p, SDsquared**0.5)
@@ -210,50 +247,50 @@ def read_problem(file):
         
     numSites = sites.shape[0]    
     numDemands = numSites
-    # plot.plotData(sites)
+    # plot.plotData(sites)    
     print '%d locations' % numSites
-    
 
-def Announce(solver, api_type, file):
-    print ('---- P-Center LSCP with ' + solver + ' (' +
-        api_type + ' on ' + file + ') -----')
 
-def RunSCIP_LSCPexampleCppStyleAPI(file):
+def Announce(solver, api_type):
+    print ('---- P-Center LSCP_Dom with ' + solver + ' (' +
+        api_type + ') -----')
+
+def RunSCIP_LSCPExampleCppStyleAPI():
     if hasattr(pywraplp.Solver, 'SCIP_MIXED_INTEGER_PROGRAMMING'):
-        Announce('SCIP', 'C++ style API', file)
-        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, file)
+        Announce('SCIP', 'C++ style API')
+        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING)
 
-def RunCBC_LSCPexampleCppStyleAPI(file):
+def RunCBC_LSCPexampleCppStyleAPI():
     if hasattr(pywraplp.Solver, 'CBC_MIXED_INTEGER_PROGRAMMING'):
-        Announce('CBC', 'C++ style API', file)
-        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, file)
+        Announce('CBC', 'C++ style API')
+        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
 
-def RunBOP_LSCPexampleCppStyleAPI(file):
+def RunBOP_LSCPexampleCppStyleAPI():
     if hasattr(pywraplp.Solver, 'BOP_INTEGER_PROGRAMMING'):
-        Announce('BOP', 'C++ style API', file)
-        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, file)
+        Announce('BOP', 'C++ style API')
+        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING)
 
 
-def main(file):
-    RunCBC_LSCPexampleCppStyleAPI(file)
-    #RunSCIP_LSCPexampleCppStyleAPI(file)
-    #RunBOP_LSCPexampleCppStyleAPI(file)
+def main(unused_argv):
+    RunCBC_LSCPexampleCppStyleAPI()
+    #RunSCIP_LSCPexampleCppStyleAPI()
+    #RunBOP_LSCPexampleCppStyleAPI()
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
 if __name__ == '__main__':
   if len(sys.argv) > 1 and len(sys.argv) <= 2:
-    file = './data/' + sys.argv[1]
+    file = '../data/' + sys.argv[1]
     print
     print "Problem instance from: ", file
     read_problem(file)
-    main(sys.argv[1])
+    main(None)
   elif len(sys.argv) > 0 and len(sys.argv) <= 1:
-    file = './data/swain.dat'
+    file = '../data/swain.dat'
     print
     print "Problem instance from: ", file
     read_problem(file)
-    main('swain.dat')
+    main(None)
   else:
     print "Please Pass: Service Distance; Data to Use"
     print "Problem not executed!"
