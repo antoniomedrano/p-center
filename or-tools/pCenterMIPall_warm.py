@@ -40,24 +40,20 @@ def RunMIPCppStyleAPI(optimization_problem_type):
     SDmin = np.amin(np.amax(distMatrix,0))
     solution[p-1,1] = SDmin
     displaySolution(p, SDmin)
-    
     # Xij assignment, Yj facility site, and Z max assignment distance variables
     X = [[None for j in range(numSites)] for i in range(numSites)]
     Y = [None] * numSites
     Z = None
-    
+    BuildModel(solver, X, Y, Z, distMatrix)
+
     for i in range(2, numSites):
 
         p = i
 
-        # reset X
-        X = [[None for j in range(numSites)] for i in range(numSites)]
-
-        BuildModel(solver, X, Y, Z, p, distMatrix)
+        c1.SetUb(p)
         SolveModel(solver)
         SDmin = solver.Objective().Value()
         solution[p-1,1] = SDmin
-        solver.Clear()
         
         displaySolution(p, SDmin)
     
@@ -95,8 +91,9 @@ def computeDistanceMatrix():
 
     return distMatrix
 
-def BuildModel(solver, X, Y, Z, p, d):
+def BuildModel(solver, X, Y, Z, d):
     
+    global c1
     infinity = solver.infinity()
     
     # DECLARE CONSTRAINTS:
@@ -114,7 +111,7 @@ def BuildModel(solver, X, Y, Z, p, d):
     objective.SetCoefficient(Z, 1)
     
     # <= constraint for locating p facilities
-    c1 = solver.Constraint(0,p)
+    c1 = solver.Constraint(0,0)
     
     for j in range(numSites):
         # initialize the Y facility location variables
@@ -214,21 +211,21 @@ def RunBOP_MIPexampleCppStyleAPI():
 
 
 def main(unused_argv):
-    RunCBC_MIPexampleCppStyleAPI()
-    #RunSCIP_MIPexampleCppStyleAPI()
+    #RunCBC_MIPexampleCppStyleAPI()
+    RunSCIP_MIPexampleCppStyleAPI()
     #RunBOP_MIPexampleCppStyleAPI()
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
 if __name__ == '__main__':
   if len(sys.argv) > 1 and len(sys.argv) <= 2:
-    file = './data/' + sys.argv[1]
+    file = '../data/' + sys.argv[1]
     print "Problem instance from: ", file
     read_problem(file)
     main(None)
   elif len(sys.argv) > 0 and len(sys.argv) <= 1:
     p = float(sys.argv[1])
-    file = './data/swain.dat'
+    file = '../data/swain.dat'
     print "Problem instance from: ", file
     read_problem(file)
     main(None)

@@ -23,94 +23,36 @@ from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
 from ortools.linear_solver import pywraplp
 
-def RunLSCPCppStyleAPI(optimization_problem_type):
+def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     
     """ Example of simple MCLP program with the C++ style API."""
     solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
     
+
+    
+    #print sites
+    #print np.shape(sites)
     start_time = time.time()
     
-    sqDistances, sqDistMatrix = computeDistances()
+    essential = computeCoverageMatrix(SD)
     
-    # p = numSites, SD = 0 is a trivial solution
-    print '  p, SD'
-    p = numSites
-    SDsquared = 0   
-    displaySolution(p, SDsquared)
+    # Facility Site Variable X
+    X = [None] * numSites
     
-    solution = np.empty([numSites, 2])
-    solution[:,0] = range(1, numSites+1)
-    solution[p-1,1] = 0
-    currP = numSites
-    iters = 0
-    #print solution
+    BuildModel(solver, X)
+    SolveModel(solver)
     
-    for i in range(1,len(sqDistances)):
-        SDsquared = sqDistances[i]
-        computeCoverageMatrix(sqDistMatrix, SDsquared)
-    
-        # Facility Site Variable X
-        X = [None] * numSites
-
-        BuildModel(solver, X)
-        SolveModel(solver)
-
-        # get the solution and clear the solver
-        p = solver.Objective().Value()
-        solver.Clear()
-        
-        # check the output
-        while (p < currP):
-            currP -= 1
-            solution[currP-1,1] = SDsquared**0.5
-            displaySolution(currP, SDsquared)
-
-        # terminate the search when p == 1
-        if (p == 2):
-            p = 1
-            SDsquared = np.amin(np.amax(sqDistMatrix,0))
-            solution[p-1,1] = SDsquared**0.5
-            displaySolution(p, SDsquared)
-            iters = i+1
-            break
-        if (p == 1):
-            iters = i
-            break
-        
     total_time = time.time()-start_time
-    #print solution
-    print
-    print '%d LSCP distances evaluated' % iters
-    print 'Total problem solved in %f seconds' % total_time
-    print
-    #plot.plotTradeoff(solution)
+    p = solver.Objective().Value() + len(essential)
+    
+    displaySolution(X, essential, p, total_time)
     
     
     
-def computeDistances():
+def computeCoverageMatrix(SD):
         
     #declare a couple variables
     global distances
-    
-    # Pull out just the coordinates from the data
-    xyPointArray = sites[:,[1,2]]
-    #A = [xyPointArray[i][:] for i in demandIDs]
-    #B = [xyPointArray[j][:] for j in siteIDs]
-    A = xyPointArray
-    B = A
-    #print A
-    
-    # Compute the distance matrix, using the squared distance
-    sqDistMatrix = cdist(A, B,'sqeuclidean')
-
-    sqDistances = np.unique(sqDistMatrix)
-    
-    return sqDistances, sqDistMatrix
-        
-    
-def computeCoverageMatrix(sqDistMatrix, SDsquared):
-        
-    #declare a couple variables
     global numDemands
     global numSites
     global Nrows
@@ -118,17 +60,31 @@ def computeCoverageMatrix(sqDistMatrix, SDsquared):
     global Nsize
     global cols
     global siteIDs
-
+    
     # Pull out just the site/demand IDs from the data
     siteIDs = sites[:,0]
+    
+    # Pull out just the coordinates from the data
+    xyPointArray = sites[:,[1,2]]
+    #A = [xyPointArray[i][:] for i in demandIDs]
+    #B = [xyPointArray[j][:] for j in siteIDs]
+    A = xyPointArray
+    #print A
+    
+    # Compute the distance matrix, using the squared distance
+    sqDistMatrix = cdist(A, A,'sqeuclidean')
+    distances = np.unique(sqDistMatrix)
+    SDsquared = SD*SD
 
     # Determine neighborhood of demands within SD of sites
     C = (sqDistMatrix <= SDsquared).astype(int)
     # Determine neighborhood of sites within 2*SD of sites (symmetric)
     C2 = (sqDistMatrix <= 4*SDsquared).astype(int)
-    
-    # Perform row and column domination
-    C, rows, cols = dominationTrim(C, C2)
+    # NOTE: For non-symmetric problems, need to make a demand-to-demand matrix as well
+
+    start_time = time.time()
+    C, rows, cols, essential = dominationTrim(C, C2)
+    print 'Domination time = %f' % (time.time()-start_time)
 
     # shorten the facility data sets
     siteIDs = siteIDs[cols]
@@ -139,7 +95,7 @@ def computeCoverageMatrix(sqDistMatrix, SDsquared):
     Nrows,Ncols = np.nonzero(C.astype(bool))
     Nsize = len(Nrows)
 
-    return 0
+    return np.nonzero(essential)[0]
 
 
 def dominationTrim(A, A2):
@@ -156,8 +112,12 @@ def dominationTrim(A, A2):
     
     rows = np.array(range(r))
     cols = np.array(range(c))
-        
+    essential = np.zeros(c)
+    
+    k = 0
+    
     while True:
+        k += 1
         c_keeps = np.ones(c)
         r_keeps = np.ones(r)
 
@@ -165,7 +125,7 @@ def dominationTrim(A, A2):
         C = csc_matrix(A)
         D = [set(C.indices[C.indptr[i]:C.indptr[i+1]]) for i in range(len(C.indptr)-1)]
 
-        # Column domination
+        # COLUMN DOMINATION
         # find subsets, ignoring columns that are known to already be subsets
         for i in range(c):
             if c_keeps[i]==0:
@@ -181,8 +141,11 @@ def dominationTrim(A, A2):
                 
         A = A[:,c_keeps.astype(bool)]
         cols = cols[c_keeps.astype(bool)]
-    
-        # Row Domination
+        # remaining sites to sites distance matrix
+        L = L[np.ix_(c_keeps.astype(bool), c_keeps.astype(bool))]
+
+
+        # ROW DOMINATION
         # find subsets, ignoring rows that are known to already be subsets
         # create a list of sets containing the indices of non-zero elements of each column
         R = csr_matrix(A)
@@ -202,21 +165,48 @@ def dominationTrim(A, A2):
                 
         A = A[r_keeps.astype(bool),:]
         rows = rows[r_keeps.astype(bool)]
+        # remaining demands to demands distance matrix
+        U = U[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))]        
+
+
+        # ESSENTIAL SITES
+        # Designate sites that uniquely cover certain demands as essential, requiring forced
+        # location there.
+        r_keeps = np.ones(len(rows))
+        c_keeps = np.ones(len(cols))
+        rSum = np.sum(A, axis=1)
+
+        for i in range(len(rSum)):
+            if rSum[i] == 1:
+                r_keeps[i] = 0
+                c_keeps[np.nonzero(A[i,:])] = 0
+                essential[cols[np.nonzero(A[i,:])]] = 1
         
+        A = A[np.ix_(r_keeps.astype(bool), c_keeps.astype(bool))]
+        cols = cols[c_keeps.astype(bool)]
+        rows = rows[r_keeps.astype(bool)]
+        
+        
+        # CHECK IF SHOULD REPEAT
         # Check if there was an improvement. If so, repeat.
         rnew,cnew = A.shape
-                
+        print k, rnew, cnew
+        
+        if (rnew == 0):
+            cols = rows  # make sure no problem gets formulated and solved
+            break
+        if (cnew == 0):
+            rows = cols  # make sure no problem gets formulated and solved
+            break
         if (rnew == r and cnew == c):
             break
         else:
-            # remaining sites to sites distance matrix
             L = L[np.ix_(c_keeps.astype(bool), c_keeps.astype(bool))]
-            # remaining demands to demands distance matrix
-            U = U[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))]
+            U = U[np.ix_(r_keeps.astype(bool), r_keeps.astype(bool))]        
             r = rnew
-            c = cnew            
+            c = cnew
     
-    return A, rows, cols
+    return A, rows, cols, essential
     
 
 def BuildModel(solver, X):
@@ -247,11 +237,10 @@ def BuildModel(solver, X):
     for k in range(Nsize):
         c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
     
-    # print 'Number of variables = %d' % solver.NumVariables()
-    # print 'Number of constraints = %d' % solver.NumConstraints()
-    # print
+    print 'Number of variables = %d' % solver.NumVariables()
+    print 'Number of constraints = %d' % solver.NumConstraints()
+    print
     return 0
-
 
 def SolveModel(solver):
     """Solve the problem and print the solution."""
@@ -264,10 +253,24 @@ def SolveModel(solver):
     # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
     assert solver.VerifySolution(1e-7, True)
     
-    
-def displaySolution(p, SDsquared):
-    # The objective value and the minimum service distance
-    print '%3d, %f' % (p, SDsquared**0.5)
+def displaySolution(X, essential, p, total_time):
+
+    print 'Total problem solved in %f seconds' % total_time
+    print
+    # The objective value of the solution.
+    print 'p = %d' % p
+    print 'SD = %f' % SD
+    # print the selected sites
+    print    
+    for j in range(numSites):
+        if (X[j].SolutionValue() == 1.0):
+            print "Site selected %d" % int(siteIDs[j])
+    for j in essential:
+        #print j
+        print "Site selected %d*" % int(sites[j,0])
+            
+    # plot solution
+    plot.plotSolutionE(sites, essential, X, cols, SD)
     
             
 def read_problem(file):
@@ -286,47 +289,50 @@ def read_problem(file):
         
     numSites = sites.shape[0]    
     numDemands = numSites
-    # plot.plotData(sites)    
+    
+    # plot.plotData(sites)
+    
     print '%d locations' % numSites
+    print 'Finished Reading File!'
 
 
 def Announce(solver, api_type):
-    print ('---- P-Center LSCP_DomDom with ' + solver + ' (' +
+    print ('---- Integer programming example with ' + solver + ' (' +
         api_type + ') -----')
 
-def RunSCIP_LSCPExampleCppStyleAPI():
+def RunSCIP_LSCPExampleCppStyleAPI(SD):
     if hasattr(pywraplp.Solver, 'SCIP_MIXED_INTEGER_PROGRAMMING'):
         Announce('SCIP', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING)
+        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, SD)
 
-def RunCBC_LSCPexampleCppStyleAPI():
+def RunCBC_LSCPexampleCppStyleAPI(SD):
     if hasattr(pywraplp.Solver, 'CBC_MIXED_INTEGER_PROGRAMMING'):
         Announce('CBC', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
+        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, SD)
 
-def RunBOP_LSCPexampleCppStyleAPI():
+def RunBOP_LSCPexampleCppStyleAPI(SD):
     if hasattr(pywraplp.Solver, 'BOP_INTEGER_PROGRAMMING'):
         Announce('BOP', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING)
+        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, SD)
 
 
 def main(unused_argv):
-    RunCBC_LSCPexampleCppStyleAPI()
-    #RunSCIP_LSCPexampleCppStyleAPI()
-    #RunBOP_LSCPexampleCppStyleAPI()
+    RunCBC_LSCPexampleCppStyleAPI(SD)
+    #RunSCIP_LSCPexampleCppStyleAPI(SD)
+    #RunBOP_LSCPexampleCppStyleAPI(SD)
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
 if __name__ == '__main__':
-  if len(sys.argv) > 1 and len(sys.argv) <= 2:
-    file = './data/' + sys.argv[1]
-    print
+  if len(sys.argv) > 2 and len(sys.argv) <= 3:
+    file = '../data/' + sys.argv[2]
+    SD = float(sys.argv[1])
     print "Problem instance from: ", file
     read_problem(file)
     main(None)
-  elif len(sys.argv) > 0 and len(sys.argv) <= 1:
-    file = './data/swain.dat'
-    print
+  elif len(sys.argv) > 1 and len(sys.argv) <= 2:
+    SD = float(sys.argv[1])
+    file = '../data/swain.dat'
     print "Problem instance from: ", file
     read_problem(file)
     main(None)
