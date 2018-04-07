@@ -45,9 +45,7 @@ def RunLSCP(SD):
     total_time = time.time()-start_time
 
     p = m.objVal
-    
     displaySolution(m, p, total_time)
-    print 'Gurobi solved in %f seconds' % total_time2
     
 def computeCoverageMatrix(SD):
         

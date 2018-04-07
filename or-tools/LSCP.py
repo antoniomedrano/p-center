@@ -38,10 +38,8 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
 
     total_time = time.time()-start_time
 
-    p = solver.Objective().Value()
-    
+    p = solver.Objective().Value()    
     displaySolution(X, p, total_time)
-    print 'OR-Tools solved in %f seconds' % total_time2
 
     
 def computeCoverageMatrix(SD):
