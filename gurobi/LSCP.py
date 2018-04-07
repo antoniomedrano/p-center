@@ -40,14 +40,12 @@ def RunLSCP(SD):
                   name="X")
 
     BuildModel(m, X)
-    start_time2 = time.time()
     SolveModel(m)
-    total_time2 = time.time()-start_time2
+
     total_time = time.time()-start_time
+
     p = m.objVal
-    
     displaySolution(m, p, total_time)
-    print 'Gurobi solved in %f seconds' % total_time2
     
 def computeCoverageMatrix(SD):
         
@@ -103,9 +101,6 @@ def BuildModel(m, X):
     # Define Coverage Constraints:
     for i in range(numDemands):
         m.addConstr(quicksum(X[j]  for  j  in  cover_rows[i])  >=  1)
-    
-    #for k in range(Nsize):
-    #    c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
     
     # The objective is to minimize the number of located facilities
     m.modelSense = GRB.MINIMIZE
