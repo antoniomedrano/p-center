@@ -18,39 +18,42 @@ import time
 import numpy as np
 import readDataFiles
 import plot
+from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
-from ortools.linear_solver import pywraplp
+from gurobipy import *
 
-def RunLSCPCppStyleAPI(optimization_problem_type, SD):
+def RunLSCP(SD):
     
-    """ Example of simple LSCP program with the C++ style API."""
-    solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
+    # Example of simple LSCP program with the C++ style API.
+    m = Model()
     
     start_time = time.time()
     
     computeCoverageMatrix(SD)
 
-    # Facility Site Variable X
-    X = [None] * numSites
+    # Facility Site binary decision variables X
+    # Each has a coefficient of 1 in the objective
+    sitesRange = range(numSites)
+    X = m.addVars(sitesRange,
+                  vtype=GRB.BINARY,
+                  obj=np.ones(numSites),
+                  name="X")
 
-    BuildModel(solver, X)
+    BuildModel(m, X)
     start_time2 = time.time()
-    SolveModel(solver)
-    total_time2 = time.time()-start_time2    
+    SolveModel(m)
+    total_time2 = time.time()-start_time2
     total_time = time.time()-start_time
-    p = solver.Objective().Value()
+    p = m.objVal
     
-    displaySolution(X, p, total_time)
-    print 'OR-Tools solved in %f seconds' % total_time2
-
+    displaySolution(m, p, total_time)
+    print 'Gurobi solved in %f seconds' % total_time2
     
 def computeCoverageMatrix(SD):
         
     #declare a couple variables
     global distances
-    global Nrows
-    global Ncols
-    global Nsize
+    global cover_rows
     global siteIDs
     
     # Pull out just the site/demand IDs from the data
@@ -90,58 +93,35 @@ def computeCoverageMatrix(SD):
 
     # Determine neighborhood of demands within SD of sites
     C = (sqDistMatrix <= SDsquared).astype(int)
-        
-    # Convert coverage to sparse matrix
-    Nrows,Ncols = np.nonzero(C.astype(bool))
-    Nsize = len(Nrows)
+    
+    cover_rows = [np.nonzero(t)[0] for t in C]
 
     return 0
 
-def BuildModel(solver, X):
+def BuildModel(m, X):
     
-    infinity = solver.infinity()
-    
-    # DECLARE CONSTRAINTS:
-    # declare demand coverage constraints (binary integer: 1 if UNCOVERED, 0 if COVERED)
-    c1 = [None]*numDemands
-    
-    # declare the objective
-    objective = solver.Objective()
-    objective.SetMinimization()
-    
-    # initialize the X variables as Binary Integer (Boolean) variables
-    for j in range(numSites):
-        name = "X,%d" % siteIDs[j]
-        X[j] = solver.BoolVar(name)
-        # add the site location variables to the objective function
-        objective.SetCoefficient(X[j],1)
-    
-    # add demands to the objective and coverage constraints
+    # Define Coverage Constraints:
     for i in range(numDemands):
-        # Covering constraints
-        c1[i] = solver.Constraint(1, solver.infinity())
-
-    # add facility coverages to the coverage constraints
-    for k in range(Nsize):
-        c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
+        m.addConstr(quicksum(X[j]  for  j  in  cover_rows[i])  >=  1)
     
-    print 'Number of variables = %d' % solver.NumVariables()
-    print 'Number of constraints = %d' % solver.NumConstraints()
+    #for k in range(Nsize):
+    #    c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
+    
+    # The objective is to minimize the number of located facilities
+    m.modelSense = GRB.MINIMIZE
+    
+    #print 'Number of variables = %d' % solver.NumVariables()
+    #print 'Number of constraints = %d' % solver.NumConstraints()
     print
     return 0
 
-def SolveModel(solver):
+def SolveModel(m):
     """Solve the problem and print the solution."""
-    result_status = solver.Solve()
-
-    # The problem has an optimal solution.
-    assert result_status == pywraplp.Solver.OPTIMAL, "The problem does not have an optimal solution!"
-
-    # The solution looks legit (when using solvers others than
-    # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
-    assert solver.VerifySolution(1e-7, True)
+    m.Params.OutputFlag = 0
+    m.Params.ResultFile = "output.sol"
+    m.optimize()
     
-def displaySolution(X, p, total_time):
+def displaySolution(m, p, total_time):
 
     print 'Total problem solved in %f seconds' % total_time
     print
@@ -149,13 +129,16 @@ def displaySolution(X, p, total_time):
     print 'p = %d' % p
     print 'SD = %f' % SD
     # print the selected sites
-    print    
-    for j in range(numSites):
-        if (X[j].SolutionValue() == 1.0):
-            print "Site selected %d" % int(siteIDs[j])
+    print
+    j = 1    
+    for v in m.getVars():
+        if (v.x == 1.0):
+            print "Site selected %s" % j
+        j += 1
     
-    # plot solution
-    plot.plotSolution(sites, X, range(numSites), SD)
+    # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+    # plot solution 
+    # plot.plotSolution(sites, X, range(numSites), SD)
     
 
 def read_problem(file):
@@ -181,30 +164,12 @@ def read_problem(file):
     print 'Finished Reading File!'
 
 
-def Announce(solver, api_type):
-    print ('---- Integer programming example with ' + solver + ' (' +
-        api_type + ') -----')
-
-def RunSCIP_LSCPExampleCppStyleAPI(SD):
-    if hasattr(pywraplp.Solver, 'SCIP_MIXED_INTEGER_PROGRAMMING'):
-        Announce('SCIP', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, SD)
-
-def RunCBC_LSCPexampleCppStyleAPI(SD):
-    if hasattr(pywraplp.Solver, 'CBC_MIXED_INTEGER_PROGRAMMING'):
-        Announce('CBC', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, SD)
-
-def RunBOP_LSCPexampleCppStyleAPI(SD):
-    if hasattr(pywraplp.Solver, 'BOP_INTEGER_PROGRAMMING'):
-        Announce('BOP', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, SD)
-
+def RunGurobi_LSCP(SD):
+    print ('---- LSCP with Gurobi -----')
+    RunLSCP(SD)
 
 def main(unused_argv):
-    RunCBC_LSCPexampleCppStyleAPI(SD)
-    #RunSCIP_LSCPexampleCppStyleAPI(SD)
-    #RunBOP_LSCPexampleCppStyleAPI(SD)
+    RunGurobi_LSCP(SD)
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
