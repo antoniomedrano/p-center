@@ -18,38 +18,44 @@ import time
 import numpy as np
 import readDataFiles
 import plot
+from scipy.sparse import csc_matrix
 from scipy.spatial.distance import cdist
 from gurobipy import *
 
-def RunLSCP(SD):
+def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     
     # Example of simple LSCP program with the C++ style API.
     m = Model()
     
+    #print sites
+    #print np.shape(sites)
     start_time = time.time()
     
     computeCoverageMatrix(SD)
 
-    # Facility Site binary decision variables X
-    # Each has a coefficient of 1 in the objective
-    sitesRange = range(numSites)
+    # Facility Site Variable X
     X = m.addVars(sitesRange,
                   vtype=GRB.BINARY,
                   obj=np.ones(numSites),
                   name="X")
-
+    
     BuildModel(m, X)
     SolveModel(m)
-
+    
     total_time = time.time()-start_time
-
-    p = m.objVal
-    displaySolution(m, p, total_time)
+    p = solver.Objective().Value()
+    
+    displaySolution(X, p, total_time)
+    
+    
     
 def computeCoverageMatrix(SD):
         
     #declare a couple variables
+    #global numDemands
+    #global numSites
     global cover_rows
+    global cols
     global siteIDs
     
     # Pull out just the site/demand IDs from the data
@@ -65,46 +71,99 @@ def computeCoverageMatrix(SD):
     
     # Compute the distance matrix, using the squared distance
     sqDistMatrix = cdist(A, B,'sqeuclidean')
-    # print 'Max Point-to-Point Distance = %f' % np.sqrt(np.amax(sqDistMatrix))
-    # print 'Mean Point-to-Point Distance = %f' % np.sqrt(np.mean(sqDistMatrix))
-    # print np.shape(sqDistMatrix)
-    #
-    # distances = np.unique(sqDistMatrix)
-    # print np.size(distances)
-    #
-    # colmax = np.amax(sqDistMatrix,0)
-    # minmax = np.amin(colmax)
-    #
-    # # print colmax
-    # print minmax**(0.5)
-    #
-    # print "The element in the distances set of the minmax is"
-    # print np.where(distances==minmax)
-    #
-    # print "The site of the minmax is"
-    # print np.where(colmax==minmax)[0]+1
-    
+    #distances = np.unique(sqDistMatrix)
     SDsquared = SD*SD
-    # TwoSDsquared = 4*SDsquared
 
     # Determine neighborhood of demands within SD of sites
     C = (sqDistMatrix <= SDsquared).astype(int)
-    
+    # Determine neighborhood of sites within 2*SD of sites (symmetric)
+    C2 = (sqDistMatrix <= 4*SDsquared).astype(int)
+        
+
+    start_time = time.time()
+    C, cols = dominationTrim(C, C2)
+    print 'Domination time = %f' % (time.time()-start_time)
+
+    # shorten the facility data sets
+    siteIDs = [siteIDs[j] for j in cols]
+    numSites = len(siteIDs)
+
+    # Convert coverage to sparse matrix
     cover_rows = [np.nonzero(t)[0] for t in C]
+    # Nrows,Ncols = np.nonzero(C.astype(bool))
+    # Nsize = len(Nrows)
 
     return 0
 
-def BuildModel(m, X):
+
+def dominationTrim(A, A2):
     
-    # Define Coverage Constraints:
+    r,c = A.shape
+    c_keeps = np.ones(c)
+    cols = np.array(range(c))
+    
+    # lower triangle of coverage matrix for checking only columns within 2*SD
+    # Explanation:
+    # looking down each column, each row with a 1 represents a site within 2*SD of that site
+    # using tril means you don't check backwards
+    B = np.tril(A2,-1)
+    
+    # start_time = time.time()
+    # create a list of sets containing the indices of non-zero elements of each column
+    C = csc_matrix(A)
+    D = [set(C.indices[C.indptr[i]:C.indptr[i+1]]) for i in range(len(C.indptr)-1)]
+    # print 'Matrix to List of Sets CSC Time = %f' % (time.time()-start_time)
+    
+    # find subsets, ignoring columns that are known to already be subsets
+    for i in cols:
+        if c_keeps[i]==0:
+            continue
+        col1 = D[i]
+        for j in np.nonzero(B[:,i])[0]:
+            # I tried `if keeps[j]==false: continue` here, but that was slower
+            # if keeps[j]==False: continue
+            col2 = D[j]
+            if col2.issubset(col1):
+                c_keeps[j] = 0
+            elif col1.issubset(col2):
+                c_keeps[i] = 0
+                break
+    
+    #Z = A[np.ix_(c_keeps.astype(bool),c_keeps.astype(bool))]
+    A = A[:,c_keeps.astype(bool)]
+    cols = cols[c_keeps.astype(bool)]
+    
+    return A, cols
+    
+
+def BuildModel(solver, X):
+    
+    # DECLARE CONSTRAINTS:
+    # declare demand coverage constraints (binary integer: 1 if UNCOVERED, 0 if COVERED)
+    c1 = [None]*numDemands
+    
+    # declare the objective
+    objective = solver.Objective()
+    objective.SetMinimization()
+    
+    # initialize the X variables as Binary Integer (Boolean) variables
+    for j in range(numSites):
+        name = "X,%d" % siteIDs[j]
+        X[j] = solver.BoolVar(name)
+        # add the site location variables to the objective function
+        objective.SetCoefficient(X[j],1)
+    
+    # add demands to the objective and coverage constraints
     for i in range(numDemands):
-        m.addConstr(quicksum(X[j]  for  j  in  cover_rows[i])  >=  1)
+        # Covering constraints
+        c1[i] = solver.Constraint(1, solver.infinity())
+
+    # add facility coverages to the coverage constraints
+    for k in range(Nsize):
+        c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
     
-    # The objective is to minimize the number of located facilities
-    m.modelSense = GRB.MINIMIZE
-    
-    #print 'Number of variables = %d' % solver.NumVariables()
-    #print 'Number of constraints = %d' % solver.NumConstraints()
+    print 'Number of variables = %d' % solver.NumVariables()
+    print 'Number of constraints = %d' % solver.NumConstraints()
     print
     return 0
 
@@ -128,7 +187,7 @@ def displaySolution(m, p, total_time):
         if (v.x == 1.0):
             print "Site selected %s" % j
         j += 1
-    
+            
     # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
     # plot solution 
     # plot.plotSolution(sites, X, range(numSites), SD)
@@ -151,15 +210,16 @@ def read_problem(file):
     numSites = sites.shape[0]    
     numDemands = numSites
     
-    #plot.plotData(sites)
+    # plot.plotData(sites)
     
     print '%d locations' % numSites
     print 'Finished Reading File!'
 
 
 def RunGurobi_LSCP(SD):
-    print ('---- LSCP with Gurobi -----')
+    print ('---- LSCPdom with Gurobi -----')
     RunLSCP(SD)
+
 
 def main(unused_argv):
     RunGurobi_LSCP(SD)
