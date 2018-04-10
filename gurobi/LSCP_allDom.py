@@ -21,14 +21,12 @@ import plot
 from scipy.sparse import csc_matrix
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
-from ortools.linear_solver import pywraplp
+from gurobipy import *
 
-def RunLSCPCppStyleAPI(optimization_problem_type, SD):
+def RunLSCP(SD):
     
-    """ Example of simple MCLP program with the C++ style API."""
-    solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
-    
-
+    # Example of simple LSCP program with the C++ style API.
+    m = Model()
     
     #print sites
     #print np.shape(sites)
@@ -36,17 +34,13 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     
     essential = computeCoverageMatrix(SD)
     
-    # Facility Site Variable X
-    X = [None] * numSites
-    
-    BuildModel(solver, X)
-    SolveModel(solver)
+    BuildModel(m)
+    SolveModel(m)
     
     total_time = time.time()-start_time
-    p = solver.Objective().Value() + len(essential)
     
-    displaySolution(X, essential, p, total_time)
-    
+    p = m.objVal + len(essential)
+    displaySolution(m, essential, p, total_time)
     
     
 def computeCoverageMatrix(SD):
@@ -55,9 +49,7 @@ def computeCoverageMatrix(SD):
     global distances
     global numDemands
     global numSites
-    global Nrows
-    global Ncols
-    global Nsize
+    global cover_rows
     global cols
     global siteIDs
     
@@ -73,7 +65,7 @@ def computeCoverageMatrix(SD):
     
     # Compute the distance matrix, using the squared distance
     sqDistMatrix = cdist(A, A,'sqeuclidean')
-    distances = np.unique(sqDistMatrix)
+    #distances = np.unique(sqDistMatrix)
     SDsquared = SD*SD
 
     # Determine neighborhood of demands within SD of sites
@@ -92,8 +84,7 @@ def computeCoverageMatrix(SD):
     numDemands = len(rows)
 
     # Convert coverage to sparse matrix
-    Nrows,Ncols = np.nonzero(C.astype(bool))
-    Nsize = len(Nrows)
+    cover_rows = [np.nonzero(t)[0] for t in C]
 
     return np.nonzero(essential)[0]
 
@@ -143,7 +134,6 @@ def dominationTrim(A, A2):
         cols = cols[c_keeps.astype(bool)]
         # remaining sites to sites distance matrix
         L = L[np.ix_(c_keeps.astype(bool), c_keeps.astype(bool))]
-
 
         # ROW DOMINATION
         # find subsets, ignoring rows that are known to already be subsets
@@ -209,51 +199,39 @@ def dominationTrim(A, A2):
     return A, rows, cols, essential
     
 
-def BuildModel(solver, X):
+def BuildModel(m):
     
-    infinity = solver.infinity()
+    # DECLARE VARIABLES:
+    # Facility Site binary decision variables X
+    # Each has a coefficient of 1 in the objective
+    sitesRange = range(numSites)
+    X = m.addVars(sitesRange,
+                  vtype=GRB.BINARY,
+                  obj=np.ones(numSites),
+                  name="X")
     
-    # DECLARE CONSTRAINTS:
-    # declare demand coverage constraints (binary integer: 1 if UNCOVERED, 0 if COVERED)
-    c1 = [None]*numDemands
-    
-    # declare the objective
-    objective = solver.Objective()
-    objective.SetMinimization()
-    
-    # initialize the X variables as Binary Integer (Boolean) variables
-    for j in range(numSites):
-        name = "X,%d" % siteIDs[j]
-        X[j] = solver.BoolVar(name)
-        # add the site location variables to the objective function
-        objective.SetCoefficient(X[j],1)
-    
-    # add demands to the objective and coverage constraints
+    # Define Coverage Constraints:
     for i in range(numDemands):
-        # Covering constraints
-        c1[i] = solver.Constraint(1, solver.infinity())
-
-    # add facility coverages to the coverage constraints
-    for k in range(Nsize):
-        c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
+        m.addConstr(quicksum(X[j]  for  j  in  cover_rows[i])  >=  1)
     
-    print 'Number of variables = %d' % solver.NumVariables()
-    print 'Number of constraints = %d' % solver.NumConstraints()
+    # The objective is to minimize the number of located facilities
+    m.modelSense = GRB.MINIMIZE
+    m.update()
+    
+    print 'Number of variables = %d' % m.numintvars
+    print 'Number of constraints = %d' % m.numconstrs
     print
     return 0
-
-def SolveModel(solver):
-    """Solve the problem and print the solution."""
-    result_status = solver.Solve()
-
-    # The problem has an optimal solution.
-    assert result_status == pywraplp.Solver.OPTIMAL, "The problem does not have an optimal solution!"
-
-    # The solution looks legit (when using solvers others than
-    # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
-    assert solver.VerifySolution(1e-7, True)
     
-def displaySolution(X, essential, p, total_time):
+
+def SolveModel(m):
+    """Solve the problem and print the solution."""
+    m.Params.OutputFlag = 0
+    m.Params.ResultFile = "output.sol"
+    m.optimize()
+    
+    
+def displaySolution(m, essential, p, total_time):
 
     print 'Total problem solved in %f seconds' % total_time
     print
@@ -261,16 +239,19 @@ def displaySolution(X, essential, p, total_time):
     print 'p = %d' % p
     print 'SD = %f' % SD
     # print the selected sites
-    print    
-    for j in range(numSites):
-        if (X[j].SolutionValue() == 1.0):
-            print "Site selected %d" % int(siteIDs[j])
+    print
+    j = 0    
+    for v in m.getVars():
+        if (v.x == 1.0):
+            print "Site selected %s" % int(siteIDs[j])
+        j += 1
     for j in essential:
         #print j
         print "Site selected %d*" % int(sites[j,0])
-            
+                
+    # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$        
     # plot solution
-    plot.plotSolutionE(sites, essential, X, cols, SD)
+    #plot.plotSolutionE(sites, essential, X, cols, SD)
     
             
 def read_problem(file):
@@ -296,30 +277,13 @@ def read_problem(file):
     print 'Finished Reading File!'
 
 
-def Announce(solver, api_type):
-    print ('---- Integer programming example with ' + solver + ' (' +
-        api_type + ') -----')
-
-def RunSCIP_LSCPExampleCppStyleAPI(SD):
-    if hasattr(pywraplp.Solver, 'SCIP_MIXED_INTEGER_PROGRAMMING'):
-        Announce('SCIP', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, SD)
-
-def RunCBC_LSCPexampleCppStyleAPI(SD):
-    if hasattr(pywraplp.Solver, 'CBC_MIXED_INTEGER_PROGRAMMING'):
-        Announce('CBC', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, SD)
-
-def RunBOP_LSCPexampleCppStyleAPI(SD):
-    if hasattr(pywraplp.Solver, 'BOP_INTEGER_PROGRAMMING'):
-        Announce('BOP', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, SD)
+def RunGurobi_LSCP(SD):
+    print ('---- LSCP_allDom with Gurobi -----')
+    RunLSCP(SD)
 
 
 def main(unused_argv):
-    RunCBC_LSCPexampleCppStyleAPI(SD)
-    #RunSCIP_LSCPexampleCppStyleAPI(SD)
-    #RunBOP_LSCPexampleCppStyleAPI(SD)
+    RunGurobi_LSCP(SD)
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
