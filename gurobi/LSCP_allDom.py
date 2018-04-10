@@ -21,14 +21,12 @@ import plot
 from scipy.sparse import csc_matrix
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
-from ortools.linear_solver import pywraplp
+from gurobipy import *
 
-def RunLSCPCppStyleAPI(optimization_problem_type, SD):
+def RunLSCP(SD):
     
-    """ Example of simple MCLP program with the C++ style API."""
-    solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
-    
-
+    # Example of simple LSCP program with the C++ style API.
+    m = Model()
     
     #print sites
     #print np.shape(sites)
@@ -39,12 +37,12 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     # Facility Site Variable X
     X = [None] * numSites
     
-    BuildModel(solver, X)
-    SolveModel(solver)
+    BuildModel(m)
+    SolveModel(m)
     
     total_time = time.time()-start_time
-    p = solver.Objective().Value() + len(essential)
     
+    p = m.objVal
     displaySolution(X, essential, p, total_time)
     
     
@@ -296,30 +294,13 @@ def read_problem(file):
     print 'Finished Reading File!'
 
 
-def Announce(solver, api_type):
-    print ('---- Integer programming example with ' + solver + ' (' +
-        api_type + ') -----')
-
-def RunSCIP_LSCPExampleCppStyleAPI(SD):
-    if hasattr(pywraplp.Solver, 'SCIP_MIXED_INTEGER_PROGRAMMING'):
-        Announce('SCIP', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, SD)
-
-def RunCBC_LSCPexampleCppStyleAPI(SD):
-    if hasattr(pywraplp.Solver, 'CBC_MIXED_INTEGER_PROGRAMMING'):
-        Announce('CBC', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, SD)
-
-def RunBOP_LSCPexampleCppStyleAPI(SD):
-    if hasattr(pywraplp.Solver, 'BOP_INTEGER_PROGRAMMING'):
-        Announce('BOP', 'C++ style API')
-        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, SD)
+def RunGurobi_LSCP(SD):
+    print ('---- LSCP_allDom with Gurobi -----')
+    RunLSCP(SD)
 
 
 def main(unused_argv):
-    RunCBC_LSCPexampleCppStyleAPI(SD)
-    #RunSCIP_LSCPexampleCppStyleAPI(SD)
-    #RunBOP_LSCPexampleCppStyleAPI(SD)
+    RunGurobi_LSCP(SD)
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """

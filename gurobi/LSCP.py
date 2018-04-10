@@ -30,21 +30,14 @@ def RunLSCP(SD):
     
     computeCoverageMatrix(SD)
 
-    # Facility Site binary decision variables X
-    # Each has a coefficient of 1 in the objective
-    sitesRange = range(numSites)
-    X = m.addVars(sitesRange,
-                  vtype=GRB.BINARY,
-                  obj=np.ones(numSites),
-                  name="X")
-
-    BuildModel(m, X)
+    BuildModel(m)
     SolveModel(m)
 
     total_time = time.time()-start_time
 
     p = m.objVal
     displaySolution(m, p, total_time)
+    
     
 def computeCoverageMatrix(SD):
         
@@ -94,7 +87,17 @@ def computeCoverageMatrix(SD):
 
     return 0
 
-def BuildModel(m, X):
+
+def BuildModel(m):
+    
+    # DECLARE VARIABLES:
+    # Facility Site binary decision variables X
+    # Each has a coefficient of 1 in the objective
+    sitesRange = range(numSites)
+    X = m.addVars(sitesRange,
+                  vtype=GRB.BINARY,
+                  obj=np.ones(numSites),
+                  name="X")
     
     # Define Coverage Constraints:
     for i in range(numDemands):
@@ -102,9 +105,12 @@ def BuildModel(m, X):
     
     # The objective is to minimize the number of located facilities
     m.modelSense = GRB.MINIMIZE
+    m.update()
     
-    #print 'Number of variables = %d' % solver.NumVariables()
-    #print 'Number of constraints = %d' % solver.NumConstraints()
+    print 'Number of variables = %d' % m.numintvars
+    print 'Number of constraints = %d' % m.numconstrs
+    #m.printStats()
+    
     print
     return 0
 
@@ -113,6 +119,7 @@ def SolveModel(m):
     m.Params.OutputFlag = 0
     m.Params.ResultFile = "output.sol"
     m.optimize()
+    
     
 def displaySolution(m, p, total_time):
 
@@ -123,10 +130,10 @@ def displaySolution(m, p, total_time):
     print 'SD = %f' % SD
     # print the selected sites
     print
-    j = 1    
+    j = 0    
     for v in m.getVars():
         if (v.x == 1.0):
-            print "Site selected %s" % j
+            print "Site selected %s" % int(siteIDs[j])
         j += 1
     
     # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$

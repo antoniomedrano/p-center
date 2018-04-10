@@ -22,7 +22,7 @@ from scipy.sparse import csc_matrix
 from scipy.spatial.distance import cdist
 from gurobipy import *
 
-def RunLSCPCppStyleAPI(optimization_problem_type, SD):
+def RunLSCP(SD):
     
     # Example of simple LSCP program with the C++ style API.
     m = Model()
@@ -32,28 +32,20 @@ def RunLSCPCppStyleAPI(optimization_problem_type, SD):
     start_time = time.time()
     
     computeCoverageMatrix(SD)
-
-    # Facility Site Variable X
-    X = m.addVars(sitesRange,
-                  vtype=GRB.BINARY,
-                  obj=np.ones(numSites),
-                  name="X")
     
-    BuildModel(m, X)
+    BuildModel(m)
     SolveModel(m)
     
     total_time = time.time()-start_time
-    p = solver.Objective().Value()
-    
-    displaySolution(X, p, total_time)
-    
+
+    p = m.objVal    
+    displaySolution(m, p, total_time)
     
     
 def computeCoverageMatrix(SD):
         
     #declare a couple variables
-    #global numDemands
-    #global numSites
+    global numSites
     global cover_rows
     global cols
     global siteIDs
@@ -86,12 +78,10 @@ def computeCoverageMatrix(SD):
 
     # shorten the facility data sets
     siteIDs = [siteIDs[j] for j in cols]
-    numSites = len(siteIDs)
+    numSites = len(siteIDs)    
 
     # Convert coverage to sparse matrix
     cover_rows = [np.nonzero(t)[0] for t in C]
-    # Nrows,Ncols = np.nonzero(C.astype(bool))
-    # Nsize = len(Nrows)
 
     return 0
 
@@ -136,34 +126,27 @@ def dominationTrim(A, A2):
     return A, cols
     
 
-def BuildModel(solver, X):
+def BuildModel(m):
     
-    # DECLARE CONSTRAINTS:
-    # declare demand coverage constraints (binary integer: 1 if UNCOVERED, 0 if COVERED)
-    c1 = [None]*numDemands
+    # DECLARE VARIABLES:
+    # Facility Site binary decision variables X
+    # Each has a coefficient of 1 in the objective
+    sitesRange = range(numSites)
+    X = m.addVars(sitesRange,
+                  vtype=GRB.BINARY,
+                  obj=np.ones(numSites),
+                  name="X")
     
-    # declare the objective
-    objective = solver.Objective()
-    objective.SetMinimization()
-    
-    # initialize the X variables as Binary Integer (Boolean) variables
-    for j in range(numSites):
-        name = "X,%d" % siteIDs[j]
-        X[j] = solver.BoolVar(name)
-        # add the site location variables to the objective function
-        objective.SetCoefficient(X[j],1)
-    
-    # add demands to the objective and coverage constraints
+    # Define Coverage Constraints:
     for i in range(numDemands):
-        # Covering constraints
-        c1[i] = solver.Constraint(1, solver.infinity())
-
-    # add facility coverages to the coverage constraints
-    for k in range(Nsize):
-        c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
+        m.addConstr(quicksum(X[j]  for  j  in  cover_rows[i])  >=  1)
     
-    print 'Number of variables = %d' % solver.NumVariables()
-    print 'Number of constraints = %d' % solver.NumConstraints()
+    # The objective is to minimize the number of located facilities
+    m.modelSense = GRB.MINIMIZE
+    m.update()
+    
+    print 'Number of variables = %d' % m.numintvars
+    print 'Number of constraints = %d' % m.numconstrs
     print
     return 0
 
@@ -172,6 +155,7 @@ def SolveModel(m):
     m.Params.OutputFlag = 0
     m.Params.ResultFile = "output.sol"
     m.optimize()
+    
     
 def displaySolution(m, p, total_time):
 
@@ -182,10 +166,10 @@ def displaySolution(m, p, total_time):
     print 'SD = %f' % SD
     # print the selected sites
     print
-    j = 1    
+    j = 0    
     for v in m.getVars():
         if (v.x == 1.0):
-            print "Site selected %s" % j
+            print "Site selected %s" % int(siteIDs[j])
         j += 1
             
     # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
