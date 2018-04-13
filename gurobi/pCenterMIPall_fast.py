@@ -18,6 +18,7 @@ import time
 import numpy as np
 import readDataFiles
 import plot
+from scipy.sparse import csc_matrix
 from scipy.spatial.distance import cdist
 from ortools.linear_solver import pywraplp
 

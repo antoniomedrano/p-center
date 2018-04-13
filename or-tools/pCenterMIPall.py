@@ -18,13 +18,12 @@ import time
 import numpy as np
 import readDataFiles
 import plot
-from scipy.sparse import csc_matrix
 from scipy.spatial.distance import cdist
 from ortools.linear_solver import pywraplp
 
 def RunMIPCppStyleAPI(optimization_problem_type):
     
-    """ Example of simple MCLP program with the C++ style API."""
+    """Example of complete p-Center program with the OR-Tools C++ style API"""
     solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
     
     start_time = time.time()
