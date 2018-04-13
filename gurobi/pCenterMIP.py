@@ -18,31 +18,25 @@ import time
 import numpy as np
 import readDataFiles
 import plot
-from scipy.sparse import csc_matrix
 from scipy.spatial.distance import cdist
-from ortools.linear_solver import pywraplp
+from gurobipy import *
 
-def RunMIPCppStyleAPI(optimization_problem_type, p):
+def Run_pCenter(p):
     
-    """ Example of simple MCLP program with the C++ style API."""
-    solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
+    """ Example of simple p-Center program with the Gurobi Python API"""
+    m = Model()    
     
     start_time = time.time()
     
     distMatrix = computeCoverageMatrix()
 
-    # Facility Site Variable X
-    X = [[None for j in range(numSites)] for i in range(numSites)]
-    Y = [None] * numSites
-    Z = None
-
-    BuildModel(solver, X, Y, Z, p, distMatrix)
-    SolveModel(solver)
+    BuildModel(m, p, distMatrix)
+    SolveModel(m)
     
     total_time = time.time()-start_time
-    SDmin = solver.Objective().Value()
+    #SDmin = m.objVal
     
-    displaySolution(Y, p, SDmin, total_time)
+    displaySolution(m, p, total_time)
     
     
 def computeCoverageMatrix():
@@ -67,120 +61,79 @@ def computeCoverageMatrix():
     
     # Compute the distance matrix, using the squared distance
     distMatrix = cdist(A, B,'euclidean')
-    #
-    # distances = np.unique(distMatrix)
-    # print np.size(distances)
-    #
-    # colmax = np.amax(sqDistMatrix,0)
-    # minmax = np.amin(colmax)
-    #
-    # # print colmax
-    # print minmax**(0.5)
-    #
-    # print "The element in the distances set of the minmax is"
-    # print np.where(distances==minmax)
-    #
-    # print "The site of the minmax is"
-    # print np.where(colmax==minmax)[0]+1
-    
-    
-    # # Determine neighborhood of demands within SD of sites
-    # C = (sqDistMatrix <= SDsquared).astype(int)
-    #
-    # # Convert coverage to sparse matrix
-    # Nrows,Ncols = np.nonzero(C.astype(bool))
-    # Nsize = len(Nrows)
 
     return distMatrix
 
-def BuildModel(solver, X, Y, Z, p, d):
+def BuildModel(m, p, d):
     
-    infinity = solver.infinity()
+    # DECLARE VARIABLES:
+    # Assignment variables X
+    # =1 if demand i is assigned to facility j
+    sitesRange = range(numSites)
+    demandsRange = range(numDemands)
     
-    # DECLARE CONSTRAINTS:
-    # declare demand coverage constraints (binary integer: 1 if UNCOVERED, 0 if COVERED)
-    c1 = None  # number of facilities constraint
-    c2 = [None] * numSites  # assign sites to one facility
-    c3 = [None] * numSites**2  # assignment only to located facilities
-    c4 = [None] * numSites  # force Z to be > the distance from any client to the assigned facility
-    
-    # declare the objective
-    objective = solver.Objective()
-    objective.SetMinimization()
-    # declare the Z linear variable and assign it to the objective
-    Z = solver.NumVar(0, infinity, 'Z')
-    objective.SetCoefficient(Z, 1)
-    
-    # <= constraint for locating p facilities
-    c1 = solver.Constraint(0,p)
-    
-    for j in range(numSites):
-        # initialize the Y facility location variables
-        name = "Y,%d" % siteIDs[j]
-        Y[j] = solver.BoolVar(name)
-        # set coefficients for Y variables in constraint 1
-        c1.SetCoefficient(Y[j],1)
-        
-    # initialize the X variables as Binary Integer (Boolean) variables
-    for i in range(numSites):
-        # Covering constraints = 1
-        c2[i] = solver.Constraint(1, 1)
-        # Z distance assignment constraint >= 0
-        c4[i] = solver.Constraint(0, infinity)
-        c4[i].SetCoefficient(Z, 1)
-        
-        for j in range(numSites):
-            # initialize the Xij assignment variables
-            name = "X,%d,%d" % (siteIDs[i], siteIDs[j])
-            X[i][j] = solver.BoolVar(name)
+    X = m.addVars(numDemands, numSites,
+                  vtype=GRB.BINARY,
+                  name="X")
+    # Facility Site binary decision variables Y
+    # =1 if facility is located at site j
+    Y = m.addVars(sitesRange,
+                  vtype=GRB.BINARY,
+                  name="Y")
 
-            # set the variable coefficients of the sum(Xij) = 1 for each i
-            c2[i].SetCoefficient(X[i][j], 1)
-           
-            # add the balinsky assignment constraints
+    # Cover distance variable Z
+    # continuous variable to be minimized
+    Z = m.addVar(vtype=GRB.CONTINUOUS, obj = 1.0, name="Z")
+    m.update()
+    
+    # Define Facility Constraint (c1):
+    m.addConstr(quicksum(Y[j] for j in range(numSites)) == p, "c1")
+
+    # Define Assignment Constraints (c2)
+    # Define Z to be the largest distance from any demand to any facility (c4)
+    for i in range(numDemands):
+        m.addConstr(quicksum(X[i,j] for j in range(numSites)) == 1, "c2[%d]" % i)
+        m.addConstr(quicksum(X[i,j]*d[i,j] for j in range(numSites)) <= Z, "c4[%d]" % i)
+
+        for j in range(numSites):
+            # add the balinsky assignment constraints (c3)
             # Yj - Xij >= 0 <--- canonical form of the assignment constraint
-            c3[i*numSites+j] = solver.Constraint(0, infinity) # c2 rhs
-            c3[i*numSites+j].SetCoefficient(X[i][j], -1)
-            c3[i*numSites+j].SetCoefficient(Y[j], 1)
-            
-            # add the assignment distance variable coefficients
-            c4[i].SetCoefficient(X[i][j], -d[i,j])
+            m.addConstr(X[i,j] <= Y[j], "c3[%d,%d]" % (i,j))
+
+    # The objective is to minimize the number of located facilities
+    m.modelSense = GRB.MINIMIZE
+    #m.setObjective(Z, GRB.MINIMIZE)
+    m.update()
     
-    # # add facility coverages to the coverage constraints
-    # for k in range(Nsize):
-    #     c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
+    print 'Number of variables = %d' % m.numvars
+    print 'Number of constraints = %d' % m.numconstrs
+    #m.printStats()
     
-    print 'Number of variables = %d' % solver.NumVariables()
-    print 'Number of constraints = %d' % solver.NumConstraints()
     print
     return 0
 
-def SolveModel(solver):
+def SolveModel(m):
     """Solve the problem and print the solution."""
-    result_status = solver.Solve()
-
-    # The problem has an optimal solution.
-    assert result_status == pywraplp.Solver.OPTIMAL, "The problem does not have an optimal solution!"
-
-    # The solution looks legit (when using solvers others than
-    # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
-    assert solver.VerifySolution(1e-7, True)
+    m.Params.OutputFlag = 0
+    m.Params.ResultFile = "output.sol"
+    m.optimize()
     
-def displaySolution(Y, p, SDmin, total_time):
+def displaySolution(m, p, total_time):
 
     print 'Total problem solved in %f seconds' % total_time
     print
     # The objective value of the solution.
     print 'p = %d' % p
-    print 'SD = %f' % SDmin
+    print 'SD = %f' % m.objVal
     # print the selected sites
-    print    
+    print
     for j in range(numSites):
-        if (Y[j].SolutionValue() == 1.0):
-            print "Site selected %d" % int(siteIDs[j])
+        v = m.getVarByName("Y[%d]" % j)
+        if (v.x == 1.0):
+            print "Site selected %s" % int(siteIDs[j])
     
     # plot solution
-    plot.plotSolution(sites, Y, range(numSites), SDmin)
+    # plot.plotSolution(sites, Y, range(numSites), SDmin)
     
 
 def read_problem(file):
@@ -206,30 +159,9 @@ def read_problem(file):
     print 'Finished Reading File!'
 
 
-def Announce(solver, api_type):
-    print ('---- P-Center MIP with ' + solver + ' (' +
-        api_type + ') -----')
-
-def RunSCIP_MIPexampleCppStyleAPI(p):
-    if hasattr(pywraplp.Solver, 'SCIP_MIXED_INTEGER_PROGRAMMING'):
-        Announce('SCIP', 'C++ style API')
-        RunMIPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, p)
-
-def RunCBC_MIPexampleCppStyleAPI(p):
-    if hasattr(pywraplp.Solver, 'CBC_MIXED_INTEGER_PROGRAMMING'):
-        Announce('CBC', 'C++ style API')
-        RunMIPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, p)
-
-def RunBOP_MIPexampleCppStyleAPI(p):
-    if hasattr(pywraplp.Solver, 'BOP_INTEGER_PROGRAMMING'):
-        Announce('BOP', 'C++ style API')
-        RunMIPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, p)
-
-
 def main(unused_argv):
-    RunCBC_MIPexampleCppStyleAPI(p)
-    # RunSCIP_MIPexampleCppStyleAPI(p)
-    # RunBOP_MIPexampleCppStyleAPI(p)
+    print ('---- P-Center with Gurobi -----')
+    Run_pCenter(p)
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """

@@ -113,8 +113,8 @@ def BuildModel(solver, X, Y, Z, p, d):
     Z = solver.NumVar(0, infinity, 'Z')
     objective.SetCoefficient(Z, 1)
     
-    # <= constraint for locating p facilities
-    c1 = solver.Constraint(0,p)
+    # constraint for locating p facilities
+    c1 = solver.Constraint(p,p)
     
     for j in range(numSites):
         # initialize the Y facility location variables
@@ -124,7 +124,7 @@ def BuildModel(solver, X, Y, Z, p, d):
         c1.SetCoefficient(Y[j],1)
         
     # initialize the X variables as Binary Integer (Boolean) variables
-    for i in range(numSites):
+    for i in range(numDemands):
         # Covering constraints = 1
         c2[i] = solver.Constraint(1, 1)
         # Z distance assignment constraint >= 0
@@ -227,7 +227,6 @@ if __name__ == '__main__':
     read_problem(file)
     main(None)
   elif len(sys.argv) > 0 and len(sys.argv) <= 1:
-    p = float(sys.argv[1])
     file = '../data/swain.dat'
     print "Problem instance from: ", file
     read_problem(file)
