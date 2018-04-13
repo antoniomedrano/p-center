@@ -1,4 +1,4 @@
-model LSCP
+model pCenterMIPall_fast
 uses "mmxprs"; !gain access to the Xpress-Optimizer solver
 uses "mmsystem";
 

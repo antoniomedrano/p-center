@@ -139,7 +139,7 @@ def BuildModel(m):
     
     # Define Coverage Constraints:
     for i in range(numDemands):
-        m.addConstr(quicksum(X[j]  for  j  in  cover_rows[i])  >=  1)
+        m.addConstr(quicksum(X[j] for j in cover_rows[i]) >= 1)
     
     # The objective is to minimize the number of located facilities
     m.modelSense = GRB.MINIMIZE
@@ -200,13 +200,9 @@ def read_problem(file):
     print 'Finished Reading File!'
 
 
-def RunGurobi_LSCP(SD):
+def main(unused_argv):
     print ('---- LSCPdom with Gurobi -----')
     RunLSCP(SD)
-
-
-def main(unused_argv):
-    RunGurobi_LSCP(SD)
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """

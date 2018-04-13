@@ -23,7 +23,7 @@ from ortools.linear_solver import pywraplp
 
 def RunMIPCppStyleAPI(optimization_problem_type, p):
     
-    """ Example of simple p-Center program with the C++ style API."""
+    """Example of simple p-Center program with the OR-Tools C++ style API"""
     solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
     
     start_time = time.time()
@@ -110,8 +110,8 @@ def BuildModel(solver, X, Y, Z, p, d):
     Z = solver.NumVar(0, infinity, 'Z')
     objective.SetCoefficient(Z, 1)
     
-    # <= constraint for locating p facilities
-    c1 = solver.Constraint(0,p)
+    # constraint for locating p facilities
+    c1 = solver.Constraint(p,p)
     
     for j in range(numSites):
         # initialize the Y facility location variables
@@ -121,7 +121,7 @@ def BuildModel(solver, X, Y, Z, p, d):
         c1.SetCoefficient(Y[j],1)
         
     # initialize the X variables as Binary Integer (Boolean) variables
-    for i in range(numSites):
+    for i in range(numDemands):
         # Covering constraints = 1
         c2[i] = solver.Constraint(1, 1)
         # Z distance assignment constraint >= 0
