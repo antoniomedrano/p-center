@@ -21,10 +21,10 @@ import plot
 from scipy.spatial.distance import cdist
 from gurobipy import *
 
-def RunMIPCppStyleAPI(optimization_problem_type):
+def Run_pCenter():
     
     """Example of complete p-Center program with the OR-Tools C++ style API"""
-    solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
+    m = Model()    
     
     start_time = time.time()
     
@@ -34,29 +34,23 @@ def RunMIPCppStyleAPI(optimization_problem_type):
     solution[:,0] = range(1, numSites+1)
 
     # p = numSites, SD = 0 is a trivial solution
-    print '  p, SD'
     p = 1
     SDmin = np.amin(np.amax(distMatrix,0))
     solution[p-1,1] = SDmin
-    displaySolution(p, SDmin)
     
-    # Xij assignment, Yj facility site, and Z max assignment distance variables
-    X = [[None for j in range(numSites)] for i in range(numSites)]
-    Y = [None] * numSites
-    Z = None
+    BuildModel(m, 0, distMatrix)
+    print '  p, SD'
+    displaySolution(p, SDmin)
     
     for i in range(2, numSites):
 
         p = i
-
-        # reset X
-        X = [[None for j in range(numSites)] for i in range(numSites)]
-
-        BuildModel(solver, X, Y, Z, p, distMatrix)
-        SolveModel(solver)
-        SDmin = solver.Objective().Value()
+        # update the right hand side of the facility constraint
+        m.getConstrByName("c1").setAttr(GRB.Attr.RHS, p)
+        
+        SolveModel(m)
+        SDmin = m.objVal
         solution[p-1,1] = SDmin
-        solver.Clear()
         
         displaySolution(p, SDmin)
     
@@ -94,74 +88,59 @@ def computeDistanceMatrix():
 
     return distMatrix
 
-def BuildModel(solver, X, Y, Z, p, d):
+def BuildModel(m, p, d):
     
-    infinity = solver.infinity()
+    # DECLARE VARIABLES:
+    # Assignment variables X
+    # =1 if demand i is assigned to facility j
+    sitesRange = range(numSites)
+    demandsRange = range(numDemands)
     
-    # DECLARE CONSTRAINTS:
-    # declare demand coverage constraints (binary integer: 1 if UNCOVERED, 0 if COVERED)
-    c1 = None  # number of facilities constraint
-    c2 = [None] * numSites  # assign sites to one facility
-    c3 = [None] * numSites**2  # assignment only to located facilities
-    c4 = [None] * numSites  # force Z to be > the distance from any client to the assigned facility
+    X = m.addVars(numDemands, numSites,
+                  vtype=GRB.BINARY,
+                  name="X")
+    # Facility Site binary decision variables Y
+    # =1 if facility is located at site j
+    Y = m.addVars(sitesRange,
+                  vtype=GRB.BINARY,
+                  name="Y")
+
+    # Cover distance variable Z
+    # continuous variable to be minimized
+    Z = m.addVar(vtype=GRB.CONTINUOUS, obj = 1.0, name="Z")
+    m.update()
     
-    # declare the objective
-    objective = solver.Objective()
-    objective.SetMinimization()
-    # declare the Z linear variable and assign it to the objective
-    Z = solver.NumVar(0, infinity, 'Z')
-    objective.SetCoefficient(Z, 1)
-    
-    # constraint for locating p facilities
-    c1 = solver.Constraint(p,p)
-    
-    for j in range(numSites):
-        # initialize the Y facility location variables
-        name = "Y,%d" % siteIDs[j]
-        Y[j] = solver.BoolVar(name)
-        # set coefficients for Y variables in constraint 1
-        c1.SetCoefficient(Y[j],1)
-        
-    # initialize the X variables as Binary Integer (Boolean) variables
+    # Define Facility Constraint (c1):
+    m.addConstr(quicksum(Y[j] for j in range(numSites)) <= p, "c1")
+
+    # Define Assignment Constraints (c2)
+    # Define Z to be the largest distance from any demand to any facility (c4)
     for i in range(numDemands):
-        # Covering constraints = 1
-        c2[i] = solver.Constraint(1, 1)
-        # Z distance assignment constraint >= 0
-        c4[i] = solver.Constraint(0, infinity)
-        c4[i].SetCoefficient(Z, 1)
-        
+        m.addConstr(quicksum(X[i,j] for j in range(numSites)) == 1, "c2[%d]" % i)
+        m.addConstr(quicksum(X[i,j]*d[i,j] for j in range(numSites)) <= Z, "c4[%d]" % i)
+
         for j in range(numSites):
-            # initialize the Xij assignment variables
-            name = "X,%d,%d" % (siteIDs[i], siteIDs[j])
-            X[i][j] = solver.BoolVar(name)
-
-            # set the variable coefficients of the sum(Xij) = 1 for each i
-            c2[i].SetCoefficient(X[i][j], 1)
-           
-            # add the balinsky assignment constraints
+            # add the balinsky assignment constraints (c3)
             # Yj - Xij >= 0 <--- canonical form of the assignment constraint
-            c3[i*numSites+j] = solver.Constraint(0, infinity) # c2 rhs
-            c3[i*numSites+j].SetCoefficient(X[i][j], -1)
-            c3[i*numSites+j].SetCoefficient(Y[j], 1)
-            
-            # add the assignment distance variable coefficients
-            c4[i].SetCoefficient(X[i][j], -d[i,j])
+            m.addConstr(X[i,j] <= Y[j], "c3[%d,%d]" % (i,j))
 
-    # print 'Number of variables = %d' % solver.NumVariables()
-    # print 'Number of constraints = %d' % solver.NumConstraints()
-    # print
+    # The objective is to minimize the number of located facilities
+    m.modelSense = GRB.MINIMIZE
+    #m.setObjective(Z, GRB.MINIMIZE)
+    m.update()
+    
+    print 'Number of variables = %d' % m.numvars
+    print 'Number of constraints = %d' % m.numconstrs
+    #m.printStats()
+    
+    print
     return 0
 
-def SolveModel(solver):
+def SolveModel(m):
     """Solve the problem and print the solution."""
-    result_status = solver.Solve()
-
-    # The problem has an optimal solution.
-    assert result_status == pywraplp.Solver.OPTIMAL, "The problem does not have an optimal solution!"
-
-    # The solution looks legit (when using solvers others than
-    # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
-    assert solver.VerifySolution(1e-7, True)
+    m.Params.OutputFlag = 0
+    m.Params.ResultFile = "output.sol"
+    m.optimize()
     
     
 def displaySolution(p, SDmin):
@@ -192,30 +171,9 @@ def read_problem(file):
     print 
 
 
-def Announce(solver, api_type):
-    print ('---- P-Center MIP with ' + solver + ' (' +
-        api_type + ') -----')
-
-def RunSCIP_MIPexampleCppStyleAPI():
-    if hasattr(pywraplp.Solver, 'SCIP_MIXED_INTEGER_PROGRAMMING'):
-        Announce('SCIP', 'C++ style API')
-        RunMIPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING)
-
-def RunCBC_MIPexampleCppStyleAPI():
-    if hasattr(pywraplp.Solver, 'CBC_MIXED_INTEGER_PROGRAMMING'):
-        Announce('CBC', 'C++ style API')
-        RunMIPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
-
-def RunBOP_MIPexampleCppStyleAPI():
-    if hasattr(pywraplp.Solver, 'BOP_INTEGER_PROGRAMMING'):
-        Announce('BOP', 'C++ style API')
-        RunMIPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING)
-
-
 def main(unused_argv):
-    RunCBC_MIPexampleCppStyleAPI()
-    #RunSCIP_MIPexampleCppStyleAPI()
-    #RunBOP_MIPexampleCppStyleAPI()
+    print ('---- Complete P-Center with Gurobi -----')
+    Run_pCenter()
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """

@@ -28,7 +28,7 @@ def Run_pCenter(p):
     
     start_time = time.time()
     
-    distMatrix = computeCoverageMatrix()
+    distMatrix = computeDistanceMatrix()
 
     BuildModel(m, p, distMatrix)
     SolveModel(m)
@@ -39,7 +39,7 @@ def Run_pCenter(p):
     displaySolution(m, p, total_time)
     
     
-def computeCoverageMatrix():
+def computeDistanceMatrix():
         
     #declare a couple variables
     global distances

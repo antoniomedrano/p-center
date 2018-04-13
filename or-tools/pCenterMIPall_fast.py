@@ -48,7 +48,7 @@ def RunMIPCppStyleAPI(optimization_problem_type):
         computeCoverageMatrix(distMatrix, SDmin)
         
         # Xij assignment, Yj facility site, and Z max assignment distance variables
-        X = [[None for j in range(numSites)] for i in range(numSites)]
+        X = [[None for j in range(numSites)] for i in range(numDemands)]
 
         BuildModel(solver, X, Y, Z, p, distMatrix)
         SolveModel(solver)
@@ -117,7 +117,7 @@ def BuildModel(solver, X, Y, Z, p, d):
     # declare demand coverage constraints (binary integer: 1 if UNCOVERED, 0 if COVERED)
     c1 = None  # number of facilities constraint
     c2 = [None] * numSites  # assign sites to one facility
-    c3 = [None] * numSites**2  # assignment only to located facilities
+    c3 = [None] * numSites*numDemands  # assignment only to located facilities
     c4 = [None] * numSites  # force Z to be > the distance from any client to the assigned facility
     
     # declare the objective
