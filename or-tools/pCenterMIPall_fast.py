@@ -128,7 +128,7 @@ def BuildModel(solver, X, Y, Z, p, d):
     objective.SetCoefficient(Z, 1)
     
     # constraint for locating p facilities
-    c1 = solver.Constraint(p,p)
+    c1 = solver.Constraint(0,p)
     
     for j in range(numSites):
         # initialize the Y facility location variables
