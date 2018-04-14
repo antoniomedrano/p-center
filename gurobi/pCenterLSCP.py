@@ -18,14 +18,13 @@ import time
 import numpy as np
 import readDataFiles
 import plot
-from scipy.sparse import csc_matrix
 from scipy.spatial.distance import cdist
-from ortools.linear_solver import pywraplp
+from gurobipy import *
 
-def RunLSCPCppStyleAPI(optimization_problem_type, file):
+def Run_pCenterLSCP():
     
-    """ Example of simple MCLP program with the C++ style API."""
-    solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
+    """Example of complete p-Center program with the Gurobi API"""
+    m = Model()
     
     start_time = time.time()
     
@@ -41,39 +40,50 @@ def RunLSCPCppStyleAPI(optimization_problem_type, file):
     solution[:,0] = range(1, numSites+1)
     solution[p-1,1] = 0
     currP = numSites
-    iters = 0
-    #print solution
     
-    for i in range(1,len(sqDistances)):
-        SDsquared = sqDistances[i]
-        computeCoverageMatrix(sqDistMatrix, SDsquared)
-    
-        # Facility Site Variable X
-        X = [None] * numSites
+    SDsquared = sqDistances[1]
+    C = computeCoverageMatrix(sqDistMatrix, SDsquared)
 
-        BuildModel(solver, X)
-        SolveModel(solver)
+    BuildModel(m)
+    SolveModel(m)
+    p = m.objVal
+    
+    while (p < currP):
+        currP -= 1
+        solution[currP,1] = SDsquared**0.5
+        displaySolution(currP, SDsquared)
+
+    for k in range(2,len(sqDistances)):
+        SDsquared = sqDistances[k]
+
+        diff, C = updateCoverCoefficeints(sqDistMatrix, SDsquared, C)
+                
+        for i in range(numDemands):
+            for j in diff[i]:
+                m.chgCoeff(m.getConstrByName("c[%d]" % i), X[j], 1)
+        m.update()
+        
+        SolveModel(m)
 
         # get the solution and clear the solver
-        p = solver.Objective().Value()
-        solver.Clear()
-        
+        p = m.objVal
+
         # check the output
         while (p < currP):
             currP -= 1
             solution[currP-1,1] = SDsquared**0.5
             displaySolution(currP, SDsquared)
-
+                
         # terminate the search when p == 1
         if (p == 2):
             p = 1
             SDsquared = np.amin(np.amax(sqDistMatrix,0))
             solution[p-1,1] = SDsquared**0.5
             displaySolution(p, SDsquared)
-            iters = i+1
+            iters = k+1
             break
         if (p == 1):
-            iters = i
+            iters = k
             break
         
     total_time = time.time()-start_time
@@ -82,7 +92,7 @@ def RunLSCPCppStyleAPI(optimization_problem_type, file):
     print '%d LSCP distances evaluated' % iters
     print 'Total problem solved in %f seconds' % total_time
     print
-    plot.plotTradeoff(file, solution)
+    #plot.plotTradeoff(file, solution)
     
 def computeDistances():
         
@@ -95,34 +105,13 @@ def computeDistances():
     
     # Pull out just the coordinates from the data
     xyPointArray = sites[:,[1,2]]
-    #A = [xyPointArray[i][:] for i in demandIDs]
-    #B = [xyPointArray[j][:] for j in siteIDs]
+
     A = xyPointArray
     B = A
-    #print A
     
     # Compute the distance matrix, using the squared distance
     sqDistMatrix = cdist(A, B,'sqeuclidean')
-    
-    # print 'Max Point-to-Point Distance = %f' % np.sqrt(np.amax(sqDistMatrix))
-    # print 'Mean Point-to-Point Distance = %f' % np.sqrt(np.mean(sqDistMatrix))
-    # print np.shape(sqDistMatrix)
-    #
     sqDistances = np.unique(sqDistMatrix)
-    
-    # print np.size(distances)
-    #
-    # colmax = np.amax(sqDistMatrix,0)
-    # minmax = np.amin(colmax)
-    #
-    # # print colmax
-    # print minmax**(0.5)
-    #
-    # print "The element in the distances set of the minmax is"
-    # print np.where(distances==minmax)
-    #
-    # print "The site of the minmax is"
-    # print np.where(colmax==minmax)[0]+1
     
     return sqDistances, sqDistMatrix
     
@@ -130,46 +119,46 @@ def computeDistances():
 def computeCoverageMatrix(sqDistMatrix, SDsquared):
         
     #declare a couple variables
-    global Nrows
-    global Ncols
-    global Nsize
+    global cover_rows
     
     # Determine neighborhood of demands within SD of sites
     C = (sqDistMatrix <= SDsquared).astype(int)
         
-    # Convert coverage to sparse matrix
-    Nrows,Ncols = np.nonzero(C.astype(bool))
-    Nsize = len(Nrows)
+    # Convert coverage to array of nonzero elements in each row
+    cover_rows = [np.nonzero(t)[0] for t in C]
 
-    return 0
+    return C
 
-def BuildModel(solver, X):
+
+def updateCoverCoefficeints(sqDistMatrix, SDsquared, B):
     
-    infinity = solver.infinity()
+    # Determine neighborhood of demands within SD of sites
+    C = (sqDistMatrix <= SDsquared).astype(int)
+    diff = [np.nonzero(t)[0] for t in (C-B)]
     
-    # DECLARE CONSTRAINTS:
-    # declare demand coverage constraints (binary integer: 1 if UNCOVERED, 0 if COVERED)
-    c1 = [None]*numDemands
+    return diff, C
+
+
+def BuildModel(m):
     
-    # declare the objective
-    objective = solver.Objective()
-    objective.SetMinimization()
+    global X
     
-    # initialize the X variables as Binary Integer (Boolean) variables
-    for j in range(numSites):
-        name = "X,%d" % siteIDs[j]
-        X[j] = solver.BoolVar(name)
-        # add the site location variables to the objective function
-        objective.SetCoefficient(X[j],1)
+    # DECLARE VARIABLES:
+    # Facility Site binary decision variables X
+    # Each has a coefficient of 1 in the objective
+    sitesRange = range(numSites)
+    X = m.addVars(sitesRange,
+                  vtype=GRB.BINARY,
+                  obj=np.ones(numSites),
+                  name="X")
     
-    # add demands to the objective and coverage constraints
+    # Define Coverage Constraints:
     for i in range(numDemands):
-        # Covering constraints
-        c1[i] = solver.Constraint(1, solver.infinity())
-
-    # add facility coverages to the coverage constraints
-    for k in range(Nsize):
-        c1[Nrows[k]].SetCoefficient(X[Ncols[k]],1)
+        m.addConstr(quicksum(X[j] for j in cover_rows[i]) >= 1, "c[%d]" % i)
+    
+    # The objective is to minimize the number of located facilities
+    m.modelSense = GRB.MINIMIZE
+    m.update()
     
     # print 'Number of variables = %d' % solver.NumVariables()
     # print 'Number of constraints = %d' % solver.NumConstraints()
@@ -177,16 +166,11 @@ def BuildModel(solver, X):
     return 0
 
 
-def SolveModel(solver):
+def SolveModel(m):
     """Solve the problem and print the solution."""
-    result_status = solver.Solve()
-
-    # The problem has an optimal solution.
-    assert result_status == pywraplp.Solver.OPTIMAL, "The problem does not have an optimal solution!"
-
-    # The solution looks legit (when using solvers others than
-    # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
-    assert solver.VerifySolution(1e-7, True)
+    m.Params.OutputFlag = 0
+    m.Params.ResultFile = "output.sol"
+    m.optimize()
     
     
 def displaySolution(p, SDsquared):
@@ -214,30 +198,9 @@ def read_problem(file):
     print '%d locations' % numSites
     
 
-def Announce(solver, api_type, file):
-    print ('---- P-Center LSCP with ' + solver + ' (' +
-        api_type + ' on ' + file + ') -----')
-
-def RunSCIP_LSCPexampleCppStyleAPI(file):
-    if hasattr(pywraplp.Solver, 'SCIP_MIXED_INTEGER_PROGRAMMING'):
-        Announce('SCIP', 'C++ style API', file)
-        RunLSCPCppStyleAPI(pywraplp.Solver.SCIP_MIXED_INTEGER_PROGRAMMING, file)
-
-def RunCBC_LSCPexampleCppStyleAPI(file):
-    if hasattr(pywraplp.Solver, 'CBC_MIXED_INTEGER_PROGRAMMING'):
-        Announce('CBC', 'C++ style API', file)
-        RunLSCPCppStyleAPI(pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING, file)
-
-def RunBOP_LSCPexampleCppStyleAPI(file):
-    if hasattr(pywraplp.Solver, 'BOP_INTEGER_PROGRAMMING'):
-        Announce('BOP', 'C++ style API', file)
-        RunLSCPCppStyleAPI(pywraplp.Solver.BOP_INTEGER_PROGRAMMING, file)
-
-
-def main(file):
-    RunCBC_LSCPexampleCppStyleAPI(file)
-    #RunSCIP_LSCPexampleCppStyleAPI(file)
-    #RunBOP_LSCPexampleCppStyleAPI(file)
+def main(unused_argv):
+    print ('---- pCenterLSCP with Gurobi -----')
+    Run_pCenterLSCP()
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
