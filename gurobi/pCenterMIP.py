@@ -29,8 +29,11 @@ def Run_pCenter(p):
     start_time = time.time()
     
     distMatrix = computeDistanceMatrix()
+    computeCoverageMatrix(distMatrix, 7.280110)
+    #print distMatrix
 
     BuildModel(m, p, distMatrix)
+    
     SolveModel(m)
     
     total_time = time.time()-start_time
@@ -64,6 +67,20 @@ def computeDistanceMatrix():
 
     return distMatrix
 
+
+def computeCoverageMatrix(distMatrix, SD_UB):
+    
+    global cover_rows
+
+    # Determine neighborhood of demands within SD of sites
+    C = (distMatrix <= SD_UB).astype(int)
+
+    # Convert coverage to sparse matrix
+    cover_rows = [np.nonzero(t)[0] for t in C]
+    
+    return 0
+
+
 def BuildModel(m, p, d):
     
     # DECLARE VARIABLES:
@@ -92,8 +109,8 @@ def BuildModel(m, p, d):
     # Define Assignment Constraints (c2)
     # Define Z to be the largest distance from any demand to any facility (c4)
     for i in range(numDemands):
-        m.addConstr(quicksum(X[i,j] for j in range(numSites)) == 1, "c2[%d]" % i)
-        m.addConstr(quicksum(X[i,j]*d[i,j] for j in range(numSites)) <= Z, "c4[%d]" % i)
+        m.addConstr(quicksum(X[i,j] for j in cover_rows[i]) == 1, "c2[%d]" % i)
+        m.addConstr(quicksum(X[i,j]*d[i,j] for j in cover_rows[i]) - Z <= 0, "c4[%d]" % i)
 
         for j in range(numSites):
             # add the balinsky assignment constraints (c3)

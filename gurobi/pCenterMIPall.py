@@ -24,7 +24,7 @@ from gurobipy import *
 def Run_pCenter():
     
     """Example of complete p-Center program with the OR-Tools C++ style API"""
-    m = Model()    
+    m = Model()
     
     start_time = time.time()
     
@@ -33,7 +33,7 @@ def Run_pCenter():
     solution = np.empty([numSites, 2])
     solution[:,0] = range(1, numSites+1)
 
-    # p = numSites, SD = 0 is a trivial solution
+    # p = 1 is a trivial solution min(max(dist))
     p = 1
     SDmin = np.amin(np.amax(distMatrix,0))
     solution[p-1,1] = SDmin
@@ -59,7 +59,6 @@ def Run_pCenter():
     displaySolution(numSites, 0)
         
     total_time = time.time()-start_time
-    #SDmin = solver.Objective().Value()
     
     print
     print 'Total problem solved in %f seconds' % total_time
@@ -108,7 +107,6 @@ def BuildModel(m, p, d):
     # Cover distance variable Z
     # continuous variable to be minimized
     Z = m.addVar(vtype=GRB.CONTINUOUS, obj = 1.0, name="Z")
-    m.update()
     
     # Define Facility Constraint (c1):
     m.addConstr(quicksum(Y[j] for j in range(numSites)) <= p, "c1")
@@ -117,7 +115,7 @@ def BuildModel(m, p, d):
     # Define Z to be the largest distance from any demand to any facility (c4)
     for i in range(numDemands):
         m.addConstr(quicksum(X[i,j] for j in range(numSites)) == 1, "c2[%d]" % i)
-        m.addConstr(quicksum(X[i,j]*d[i,j] for j in range(numSites)) <= Z, "c4[%d]" % i)
+        m.addConstr(quicksum(X[i,j]*d[i,j] for j in range(numSites)) - Z <= 0, "c4[%d]" % i)
 
         for j in range(numSites):
             # add the balinsky assignment constraints (c3)

@@ -37,32 +37,26 @@ def Run_pCenter():
     p = 1
     SDmin = np.amin(np.amax(distMatrix,0))
     solution[p-1,1] = SDmin
-    
-    C = computeCoverageMatrix(distMatrix, SDmin)
-    BuildModel(m, 0, distMatrix)
+        
+    computeCoverageMatrix(distMatrix, SDmin)
+    BuildModel(m, distMatrix)
+
     print '  p, SD'
     displaySolution(p, SDmin)
 
+
     for i in range(2, numSites):
         p = i
-        
-        diff, C = updateCoverCoefficeints(distMatrix, SDmin+.000001, C)
-        
-        # update the right hand side of the facility constraint
-        m.getConstrByName("c1").setAttr(GRB.Attr.RHS, p)
-        for i in range(numDemands):
-            for j in diff[i]:
-                m.chgCoeff(m.getConstrByName("c2[%d]" % i), X[i,j], 0)
-                m.chgCoeff(m.getConstrByName("c4[%d]" % i), X[i,j], 0)
-        m.update()
-        
+
+        computeCoverageMatrix(distMatrix, SDmin+.000001)
+        UpdateModel(m, p, distMatrix)
         SolveModel(m)
         SDmin = m.objVal
         solution[p-1,1] = SDmin
-        
+
         displaySolution(p, SDmin)
-    
-    # solution for p = numSites is SDmin = 0    
+
+    # solution for p = numSites is SDmin = 0
     solution[numSites-1,1] = 0
     displaySolution(numSites, 0)
         
@@ -92,7 +86,7 @@ def computeDistanceMatrix():
     
     # Compute the distance matrix, using the euclidean distance
     distMatrix = cdist(A, B,'euclidean')
-    
+
     return distMatrix
     
     
@@ -106,20 +100,13 @@ def computeCoverageMatrix(distMatrix, SD_UB):
     # Convert coverage to sparse matrix
     cover_rows = [np.nonzero(t)[0] for t in C]
     
-    return C
-    
-def updateCoverCoefficeints(distMatrix, SD_UB, B):
-    
-    # Determine neighborhood of demands within SD of sites
-    C = (distMatrix <= SD_UB).astype(int)
-    diff = [np.nonzero(t)[0] for t in (C-B)]
-    
-    return diff, C
+    return 0
 
 
-def BuildModel(m, p, d):
+def BuildModel(m, d):
     
     global X
+    global Z
     
     # DECLARE VARIABLES:
     # Assignment variables X
@@ -141,19 +128,20 @@ def BuildModel(m, p, d):
     Z = m.addVar(vtype=GRB.CONTINUOUS, obj = 1.0, name="Z")
     
     # Define Facility Constraint (c1):
-    m.addConstr(quicksum(Y[j] for j in range(numSites)) <= p, "c1")
+    m.addConstr(quicksum(Y[j] for j in range(numSites)) <= 0, "c1")
 
     # Define Assignment Constraints (c2)
     # Define Z to be the largest distance from any demand to any facility (c4)
     for i in range(numDemands):
-        m.addConstr(quicksum(X[i,j] for j in cover_rows[i]) == 1, "c2[%d]" % i)
-        m.addConstr(quicksum(X[i,j]*d[i,j] for j in cover_rows[i]) - Z <= 0, "c4[%d]" % i)
-
         for j in range(numSites):
             # add the balinsky assignment constraints (c3)
             # Yj - Xij >= 0 <--- canonical form of the assignment constraint
             m.addConstr(X[i,j] <= Y[j], "c3[%d,%d]" % (i,j))
-
+            
+    for i in range(numDemands):
+        m.addConstr(quicksum(X[i,j] for j in cover_rows[i]) == 1, "c2[%d]" % i)
+        m.addConstr(quicksum(X[i,j]*d[i,j] for j in cover_rows[i]) - Z <= 0, "c4[%d]" % i)
+        
     # The objective is to minimize the number of located facilities
     m.modelSense = GRB.MINIMIZE
     #m.setObjective(Z, GRB.MINIMIZE)
@@ -165,6 +153,27 @@ def BuildModel(m, p, d):
     
     print
     return 0
+
+
+def UpdateModel(m, p, d):
+    
+    # update the right hand side of the facility constraint
+    m.getConstrByName("c1").setAttr(GRB.Attr.RHS, p)
+
+    m.remove(m.getConstrs()[(numDemands*numSites+1):])
+
+    # Define Assignment Constraints (c2)
+    # Define Z to be the largest distance from any demand to any facility (c4)
+    for i in range(numDemands):
+        m.addConstr(quicksum(X[i,j] for j in cover_rows[i]) == 1, "c2[%d]" % i)
+        m.addConstr(quicksum(X[i,j]*d[i,j] for j in cover_rows[i]) - Z <= 0, "c4[%d]" % i)
+
+    m.update()
+    
+    #print 'Number of variables = %d' % m.numvars
+    #print 'Number of constraints = %d' % m.numconstrs
+    return 0
+    
 
 def SolveModel(m):
     """Solve the problem and print the solution."""
