@@ -23,7 +23,7 @@ from gurobipy import *
 
 def Run_pCenter():
     
-    """Example of complete p-Center program with the OR-Tools C++ style API"""
+    """Example of complete p-Center program with the Gurobi API"""
     m = Model()
     
     start_time = time.time()

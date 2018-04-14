@@ -23,7 +23,7 @@ from gurobipy import *
 
 def Run_pCenter():
     
-    """Example of complete p-Center program with the OR-Tools C++ style API"""
+    """Example of complete p-Center program with the Gurobi API"""
     m = Model()
     
     start_time = time.time()
@@ -37,13 +37,20 @@ def Run_pCenter():
     p = 1
     SDmin = np.amin(np.amax(distMatrix,0))
     solution[p-1,1] = SDmin
-    
+
     C = computeCoverageMatrix(distMatrix, SDmin)
-    BuildModel(m, 0, distMatrix)
+    BuildModel(m, 2, distMatrix)
+    
     print '  p, SD'
     displaySolution(p, SDmin)
-
-    for i in range(2, numSites):
+    
+    p = 2
+    SolveModel(m)
+    SDmin = m.objVal
+    solution[p-1,1] = SDmin
+    displaySolution(p, SDmin)
+    
+    for i in range(3, numSites):
         p = i
         
         diff, C = updateCoverCoefficeints(distMatrix, SDmin+.000001, C)

@@ -45,7 +45,6 @@ def Run_pCenterLSCP():
     
     SDsquared = sqDistances[1]
     essential = computeCoverageMatrix(sqDistMatrix, SDsquared)
-
     BuildModel(m)
     SolveModel(m)
 
@@ -62,7 +61,9 @@ def Run_pCenterLSCP():
         SDsquared = sqDistances[k]
         essential = computeCoverageMatrix(sqDistMatrix, SDsquared)
 
-        UpdateModel(m)
+        del m
+        m = Model()
+        BuildModel(m)
         SolveModel(m)
 
         # get the solution and clear the solver
@@ -281,23 +282,6 @@ def BuildModel(m):
     # print 'Number of constraints = %d' % m.numconstrs
     # print
     return 0
-
-
-def UpdateModel(m):
-    m.remove(m.getVars())
-    m.remove(m.getConstrs())
-    
-    # DECLARE VARIABLES:
-    # Facility Site binary decision variables X
-    # Each has a coefficient of 1 in the objective
-    X = m.addVars(numSites,
-                  vtype=GRB.BINARY,
-                  obj=np.ones(numSites),
-                  name="X")
-    
-    # Define Coverage Constraints:
-    for i in range(numDemands):
-        m.addConstr(quicksum(X[j] for j in cover_rows[i]) >= 1)
 
 
 def SolveModel(m):
