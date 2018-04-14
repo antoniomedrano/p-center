@@ -21,34 +21,62 @@ import plot
 from scipy.spatial.distance import cdist
 from gurobipy import *
 
-def Run_pCenter(p):
+def Run_pCenter():
     
-    """ Example of simple p-Center program with the Gurobi Python API"""
-    m = Model()    
+    """Example of complete p-Center program with the OR-Tools C++ style API"""
+    m = Model()
     
     start_time = time.time()
     
     distMatrix = computeDistanceMatrix()
-    computeCoverageMatrix(distMatrix, 7.280110)
-    #print distMatrix
 
-    BuildModel(m, p, distMatrix)
+    solution = np.empty([numSites, 2])
+    solution[:,0] = range(1, numSites+1)
+
+    # p = 1 is a trivial solution min(max(dist))
+    p = 1
+    SDmin = np.amin(np.amax(distMatrix,0))
+    solution[p-1,1] = SDmin
     
-    SolveModel(m)
+    C = computeCoverageMatrix(distMatrix, SDmin)
+    BuildModel(m, 0, distMatrix)
+    print '  p, SD'
+    displaySolution(p, SDmin)
+
+    for i in range(2, numSites):
+        p = i
+        
+        diff, C = updateCoverCoefficeints(distMatrix, SDmin+.000001, C)
+        
+        # update the right hand side of the facility constraint
+        m.getConstrByName("c1").setAttr(GRB.Attr.RHS, p)
+        for i in range(numDemands):
+            for j in diff[i]:
+                m.chgCoeff(m.getConstrByName("c2[%d]" % i), X[i,j], 0)
+                m.chgCoeff(m.getConstrByName("c4[%d]" % i), X[i,j], 0)
+        m.update()
+        
+        SolveModel(m)
+        SDmin = m.objVal
+        solution[p-1,1] = SDmin
+        
+        displaySolution(p, SDmin)
     
+    # solution for p = numSites is SDmin = 0    
+    solution[numSites-1,1] = 0
+    displaySolution(numSites, 0)
+        
     total_time = time.time()-start_time
-    #SDmin = m.objVal
     
-    displaySolution(m, p, total_time)
+    print
+    print 'Total problem solved in %f seconds' % total_time
+    print
+    #displaySolution(Y, p, SDmin, total_time)
     
     
 def computeDistanceMatrix():
         
     #declare a couple variables
-    global distances
-    global Nrows
-    global Ncols
-    global Nsize
     global siteIDs
     
     # Pull out just the site/demand IDs from the data
@@ -62,12 +90,12 @@ def computeDistanceMatrix():
     B = A
     #print A
     
-    # Compute the distance matrix, using the squared distance
+    # Compute the distance matrix, using the euclidean distance
     distMatrix = cdist(A, B,'euclidean')
-
+    
     return distMatrix
-
-
+    
+    
 def computeCoverageMatrix(distMatrix, SD_UB):
     
     global cover_rows
@@ -78,10 +106,20 @@ def computeCoverageMatrix(distMatrix, SD_UB):
     # Convert coverage to sparse matrix
     cover_rows = [np.nonzero(t)[0] for t in C]
     
-    return 0
+    return C
+    
+def updateCoverCoefficeints(distMatrix, SD_UB, B):
+    
+    # Determine neighborhood of demands within SD of sites
+    C = (distMatrix <= SD_UB).astype(int)
+    diff = [np.nonzero(t)[0] for t in (C-B)]
+    
+    return diff, C
 
 
 def BuildModel(m, p, d):
+    
+    global X
     
     # DECLARE VARIABLES:
     # Assignment variables X
@@ -101,10 +139,9 @@ def BuildModel(m, p, d):
     # Cover distance variable Z
     # continuous variable to be minimized
     Z = m.addVar(vtype=GRB.CONTINUOUS, obj = 1.0, name="Z")
-    m.update()
     
     # Define Facility Constraint (c1):
-    m.addConstr(quicksum(Y[j] for j in range(numSites)) == p, "c1")
+    m.addConstr(quicksum(Y[j] for j in range(numSites)) <= p, "c1")
 
     # Define Assignment Constraints (c2)
     # Define Z to be the largest distance from any demand to any facility (c4)
@@ -135,22 +172,10 @@ def SolveModel(m):
     m.Params.ResultFile = "output.sol"
     m.optimize()
     
-def displaySolution(m, p, total_time):
-
-    print 'Total problem solved in %f seconds' % total_time
-    print
-    # The objective value of the solution.
-    print 'p = %d' % p
-    print 'SD = %f' % m.objVal
-    # print the selected sites
-    print
-    for j in range(numSites):
-        v = m.getVarByName("Y[%d]" % j)
-        if (v.x == 1.0):
-            print "Site selected %s" % int(siteIDs[j])
     
-    # plot solution
-    # plot.plotSolution(sites, Y, range(numSites), SDmin)
+def displaySolution(p, SDmin):
+    # The objective value and the minimum service distance
+    print '%3d, %f' % (p, SDmin)
     
 
 def read_problem(file):
@@ -173,24 +198,22 @@ def read_problem(file):
     #plot.plotData(sites)
     
     print '%d locations' % numSites
-    print 'Finished Reading File!'
+    print 
 
 
 def main(unused_argv):
-    print ('---- P-Center with Gurobi -----')
-    Run_pCenter(p)
+    print ('---- Complete P-Center with Gurobi -----')
+    Run_pCenter()
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
 if __name__ == '__main__':
-  if len(sys.argv) > 2 and len(sys.argv) <= 3:
-    file = '../data/' + sys.argv[2]
-    p = float(sys.argv[1])
+  if len(sys.argv) > 1 and len(sys.argv) <= 2:
+    file = '../data/' + sys.argv[1]
     print "Problem instance from: ", file
     read_problem(file)
     main(None)
-  elif len(sys.argv) > 1 and len(sys.argv) <= 2:
-    p = float(sys.argv[1])
+  elif len(sys.argv) > 0 and len(sys.argv) <= 1:
     file = '../data/swain.dat'
     print "Problem instance from: ", file
     read_problem(file)

@@ -18,13 +18,12 @@ import time
 import numpy as np
 import readDataFiles
 import plot
-from scipy.sparse import csc_matrix
 from scipy.spatial.distance import cdist
 from ortools.linear_solver import pywraplp
 
 def RunMIPCppStyleAPI(optimization_problem_type):
     
-    """ Example of simple MCLP program with the C++ style API."""
+    """Example of complete p-Center program with the OR-Tools C++ style API"""
     solver = pywraplp.Solver('RunIntegerExampleCppStyleAPI', optimization_problem_type)
     
     start_time = time.time()
@@ -49,7 +48,7 @@ def RunMIPCppStyleAPI(optimization_problem_type):
         computeCoverageMatrix(distMatrix, SDmin)
         
         # Xij assignment, Yj facility site, and Z max assignment distance variables
-        X = [[None for j in range(numSites)] for i in range(numSites)]
+        X = [[None for j in range(numSites)] for i in range(numDemands)]
 
         BuildModel(solver, X, Y, Z, p, distMatrix)
         SolveModel(solver)
@@ -118,7 +117,7 @@ def BuildModel(solver, X, Y, Z, p, d):
     # declare demand coverage constraints (binary integer: 1 if UNCOVERED, 0 if COVERED)
     c1 = None  # number of facilities constraint
     c2 = [None] * numSites  # assign sites to one facility
-    c3 = [None] * numSites**2  # assignment only to located facilities
+    c3 = [None] * numSites*numDemands  # assignment only to located facilities
     c4 = [None] * numSites  # force Z to be > the distance from any client to the assigned facility
     
     # declare the objective
