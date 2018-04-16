@@ -53,6 +53,7 @@ def Run_pCenter():
     for i in range(3, numSites):
         p = i
         
+        # find the difference in the coverage matrix from p=i+1 to p=i
         diff, C = updateCoverCoefficeints(distMatrix, SDmin+.000001, C)
         
         # update the right hand side of the facility constraint
@@ -61,7 +62,7 @@ def Run_pCenter():
             for j in diff[i]:
                 m.chgCoeff(m.getConstrByName("c2[%d]" % i), X[i,j], 0)
                 m.chgCoeff(m.getConstrByName("c4[%d]" % i), X[i,j], 0)
-        m.update()
+                #m.remove(m.getVarByName("x[%d,%d]" % (i,j)))  # removing slows model down
         
         SolveModel(m)
         SDmin = m.objVal
@@ -131,15 +132,20 @@ def BuildModel(m, p, d):
     # DECLARE VARIABLES:
     # Assignment variables X
     # =1 if demand i is assigned to facility j
-    sitesRange = range(numSites)
-    demandsRange = range(numDemands)
+    X = {}
+    for i in range(numDemands):
+        for j in cover_rows[i]:
+            X[i,j] = m.addVar(vtype=GRB.BINARY, name="x[%d,%d]" % (i,j))
+    m.update()
     
-    X = m.addVars(numDemands, numSites,
-                  vtype=GRB.BINARY,
-                  name="X")
+    # # More standard way, the above takes advantage of some density
+    # X = m.addVars(numDemands, numSites,
+    #               vtype=GRB.BINARY,
+    #               name="X")
+    
     # Facility Site binary decision variables Y
     # =1 if facility is located at site j
-    Y = m.addVars(sitesRange,
+    Y = m.addVars(numSites,
                   vtype=GRB.BINARY,
                   name="Y")
 
@@ -156,16 +162,16 @@ def BuildModel(m, p, d):
         m.addConstr(quicksum(X[i,j] for j in cover_rows[i]) == 1, "c2[%d]" % i)
         m.addConstr(quicksum(X[i,j]*d[i,j] for j in cover_rows[i]) - Z <= 0, "c4[%d]" % i)
 
-        for j in range(numSites):
+        # for j in range(numSites):
+        for j in cover_rows[i]:
             # add the balinsky assignment constraints (c3)
             # Yj - Xij >= 0 <--- canonical form of the assignment constraint
             m.addConstr(X[i,j] <= Y[j], "c3[%d,%d]" % (i,j))
 
     # The objective is to minimize the number of located facilities
     m.modelSense = GRB.MINIMIZE
-    #m.setObjective(Z, GRB.MINIMIZE)
-    m.update()
     
+    m.update()
     print 'Number of variables = %d' % m.numvars
     print 'Number of constraints = %d' % m.numconstrs
     #m.printStats()
