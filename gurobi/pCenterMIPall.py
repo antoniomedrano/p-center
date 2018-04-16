@@ -92,15 +92,12 @@ def BuildModel(m, p, d):
     # DECLARE VARIABLES:
     # Assignment variables X
     # =1 if demand i is assigned to facility j
-    sitesRange = range(numSites)
-    demandsRange = range(numDemands)
-    
     X = m.addVars(numDemands, numSites,
                   vtype=GRB.BINARY,
                   name="X")
     # Facility Site binary decision variables Y
     # =1 if facility is located at site j
-    Y = m.addVars(sitesRange,
+    Y = m.addVars(numSites,
                   vtype=GRB.BINARY,
                   name="Y")
 
@@ -124,9 +121,8 @@ def BuildModel(m, p, d):
 
     # The objective is to minimize the number of located facilities
     m.modelSense = GRB.MINIMIZE
-    #m.setObjective(Z, GRB.MINIMIZE)
+
     m.update()
-    
     print 'Number of variables = %d' % m.numvars
     print 'Number of constraints = %d' % m.numconstrs
     #m.printStats()
