@@ -125,6 +125,7 @@ def computeCoverageMatrix(sqDistMatrix, SDsquared):
     global numSites
     global cover_rows
     global cols
+    global rows
     global siteIDs
 
     # Determine neighborhood of demands within SD of sites
@@ -293,7 +294,7 @@ def UpdateModel(m):
                   vtype=GRB.BINARY,
                   obj=np.ones(numSites),
                   name="X")
-    
+
     # Define Coverage Constraints:
     for i in range(numDemands):
         m.addConstr(quicksum(X[j] for j in cover_rows[i]) >= 1)

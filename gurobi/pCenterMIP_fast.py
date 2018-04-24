@@ -21,28 +21,36 @@ import plot
 from scipy.spatial.distance import cdist
 from gurobipy import *
 
-def RunLSCP(SD):
+def Run_pCenter(p):
     
-    # Example of simple LSCP program with the Gurobi API.
-    m = Model()
+    """ Example of simple p-Center program with the Gurobi Python API"""
+    m = Model()    
     
     start_time = time.time()
     
-    computeCoverageMatrix(SD)
+    distMatrix = computeDistanceMatrix()
+    #print distMatrix
 
-    BuildModel(m)
+    # p = 1 is a trivial solution min(max(dist))
+    # use this as an upper bound for z_p
+    # allows for trimming variables and constraints
+    SDmin = np.amin(np.amax(distMatrix,0))
+
+    C = computeCoverageMatrix(distMatrix, SDmin)
+    BuildModel(m, p, distMatrix)
+    
     SolveModel(m)
-
+    SDmin = m.objVal
+    
     total_time = time.time()-start_time
-
-    p = m.objVal
+    #SDmin = m.objVal
+    
     displaySolution(m, p, total_time)
     
     
-def computeCoverageMatrix(SD):
+def computeDistanceMatrix():
         
     #declare a couple variables
-    global cover_rows
     global siteIDs
     
     # Pull out just the site/demand IDs from the data
@@ -57,62 +65,78 @@ def computeCoverageMatrix(SD):
     #print A
     
     # Compute the distance matrix, using the squared distance
-    sqDistMatrix = cdist(A, B,'sqeuclidean')
-    # print 'Max Point-to-Point Distance = %f' % np.sqrt(np.amax(sqDistMatrix))
-    # print 'Mean Point-to-Point Distance = %f' % np.sqrt(np.mean(sqDistMatrix))
-    # print np.shape(sqDistMatrix)
-    #
-    # distances = np.unique(sqDistMatrix)
-    # print np.size(distances)
-    #
-    # colmax = np.amax(sqDistMatrix,0)
-    # minmax = np.amin(colmax)
-    #
-    # # print colmax
-    # print minmax**(0.5)
-    #
-    # print "The element in the distances set of the minmax is"
-    # print np.where(distances==minmax)
-    #
-    # print "The site of the minmax is"
-    # print np.where(colmax==minmax)[0]+1
+    distMatrix = cdist(A, B,'euclidean')
+
+    return distMatrix
     
-    SDsquared = SD*SD
-    # TwoSDsquared = 4*SDsquared
+    
+def computeCoverageMatrix(distMatrix, SD_UB):
+
+    global cover_rows
 
     # Determine neighborhood of demands within SD of sites
-    C = (sqDistMatrix <= SDsquared).astype(int)
-    
+    C = (distMatrix <= SD_UB).astype(int)
+
+    # Convert coverage to sparse matrix
     cover_rows = [np.nonzero(t)[0] for t in C]
 
-    return 0
+    return C
 
 
-def BuildModel(m):
+def BuildModel(m, p, d):
+    
+    global X
     
     # DECLARE VARIABLES:
-    # Facility Site binary decision variables X
-    # Each has a coefficient of 1 in the objective
-    sitesRange = range(numSites)
-    X = m.addVars(sitesRange,
-                  vtype=GRB.BINARY,
-                  obj=np.ones(numSites),
-                  name="X")
-    
-    # Define Coverage Constraints:
+    # Assignment variables X
+    # =1 if demand i is assigned to facility j
+    X = {}
     for i in range(numDemands):
-        m.addConstr(quicksum(X[j] for j in cover_rows[i]) >= 1)
-    
-    # The objective is to minimize the number of located facilities
-    m.modelSense = GRB.MINIMIZE
+        for j in cover_rows[i]:
+            X[i,j] = m.addVar(vtype=GRB.BINARY, name="x[%d,%d]" % (i,j))
     m.update()
     
-    print 'Number of variables = %d' % m.numintvars
+    # # More standard way, the above takes advantage of some density
+    # X = m.addVars(numDemands, numSites,
+    #               vtype=GRB.BINARY,
+    #               name="X")
+    
+    # Facility Site binary decision variables Y
+    # =1 if facility is located at site j
+    Y = m.addVars(numSites,
+                  vtype=GRB.BINARY,
+                  name="Y")
+
+    # Cover distance variable Z
+    # continuous variable to be minimized
+    Z = m.addVar(vtype=GRB.CONTINUOUS, obj = 1.0, name="Z")
+    
+    # Define Facility Constraint (c1):
+    m.addConstr(quicksum(Y[j] for j in range(numSites)) <= p, "c1")
+
+    # Define Assignment Constraints (c2)
+    # Define Z to be the largest distance from any demand to any facility (c4)
+    for i in range(numDemands):
+        m.addConstr(quicksum(X[i,j] for j in cover_rows[i]) == 1, "c2[%d]" % i)
+        m.addConstr(quicksum(X[i,j]*d[i,j] for j in cover_rows[i]) - Z <= 0, "c4[%d]" % i)
+
+        #for j in range(numSites):
+        for j in cover_rows[i]:
+            # add the balinsky assignment constraints (c3)
+            # Yj - Xij >= 0 <--- canonical form of the assignment constraint
+            m.addConstr(X[i,j] <= Y[j], "c3[%d,%d]" % (i,j))
+
+    # The objective is to minimize the number of located facilities
+    m.modelSense = GRB.MINIMIZE
+    
+    m.update()
+    print 'Number of variables = %d' % m.numvars
     print 'Number of constraints = %d' % m.numconstrs
     #m.printStats()
     
     print
     return 0
+
 
 def SolveModel(m):
     """Solve the problem and print the solution."""
@@ -120,25 +144,22 @@ def SolveModel(m):
     m.Params.ResultFile = "output.sol"
     m.optimize()
     
-    
 def displaySolution(m, p, total_time):
 
     print 'Total problem solved in %f seconds' % total_time
     print
     # The objective value of the solution.
     print 'p = %d' % p
-    print 'SD = %f' % SD
+    print 'SD = %f' % m.objVal
     # print the selected sites
     print
-    j = 0    
-    for v in m.getVars():
+    for j in range(numSites):
+        v = m.getVarByName("Y[%d]" % j)
         if (v.x == 1.0):
             print "Site selected %s" % int(siteIDs[j])
-        j += 1
     
-    # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-    # plot solution 
-    # plot.plotSolution(sites, X, range(numSites), SD)
+    # plot solution
+    # plot.plotSolution(sites, Y, range(numSites), SDmin)
     
 
 def read_problem(file):
@@ -165,20 +186,20 @@ def read_problem(file):
 
 
 def main(unused_argv):
-    print ('---- LSCP with Gurobi -----')
-    RunLSCP(SD)
+    print ('---- P-Center with Gurobi -----')
+    Run_pCenter(p)
 
 
 """ Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
 if __name__ == '__main__':
   if len(sys.argv) > 2 and len(sys.argv) <= 3:
     file = '../data/' + sys.argv[2]
-    SD = float(sys.argv[1])
+    p = float(sys.argv[1])
     print "Problem instance from: ", file
     read_problem(file)
     main(None)
   elif len(sys.argv) > 1 and len(sys.argv) <= 2:
-    SD = float(sys.argv[1])
+    p = float(sys.argv[1])
     file = '../data/swain.dat'
     print "Problem instance from: ", file
     read_problem(file)

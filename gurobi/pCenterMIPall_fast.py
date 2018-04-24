@@ -62,7 +62,10 @@ def Run_pCenter():
             for j in diff[i]:
                 m.chgCoeff(m.getConstrByName("c2[%d]" % i), X[i,j], 0)
                 m.chgCoeff(m.getConstrByName("c4[%d]" % i), X[i,j], 0)
-                #m.remove(m.getVarByName("x[%d,%d]" % (i,j)))  # removing slows model down
+                # removing constr speeds model up
+                m.remove(m.getConstrByName("c3[%d,%d]" % (i,j)))
+                # removing var slows model down
+                #m.remove(m.getVarByName("x[%d,%d]" % (i,j)))
         
         SolveModel(m)
         SDmin = m.objVal
@@ -162,7 +165,7 @@ def BuildModel(m, p, d):
         m.addConstr(quicksum(X[i,j] for j in cover_rows[i]) == 1, "c2[%d]" % i)
         m.addConstr(quicksum(X[i,j]*d[i,j] for j in cover_rows[i]) - Z <= 0, "c4[%d]" % i)
 
-        # for j in range(numSites):
+        #for j in range(numSites):
         for j in cover_rows[i]:
             # add the balinsky assignment constraints (c3)
             # Yj - Xij >= 0 <--- canonical form of the assignment constraint
