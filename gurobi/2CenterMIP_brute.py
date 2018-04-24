@@ -62,18 +62,15 @@ def computeDistanceMatrix():
 def SolveModel(p, d):
 
     zbest = 1000000000000000.0
-    s1 = -1
-    s2 = -1
 
     for i in range(numSites):
         for j in range(i+1,numSites):
             zmin = np.amax(np.minimum(d[i,:],d[j,:]))
             if (zmin < zbest):
                 zbest = zmin
-                s1 = i
-                s2 = j
+                locations = [i,j]
 
-    return zbest, [s1, s2]
+    return zbest, locations
     
     
 def displaySolution(locations, p, zbest, total_time):
@@ -116,7 +113,7 @@ def read_problem(file):
 
 
 def main(unused_argv):
-    print ('---- P-Center with Gurobi -----')
+    print ('---- 2-Center solved via brute force -----')
     Run_pCenter(p)
 
 

@@ -70,9 +70,9 @@ def SolveModel(p, d):
                 # zmin = np.amax(np.amin([d[i,:],d[j,:],d[k,:]],axis=0)) # this is slower
                 if (zmin < zbest):
                     zbest = zmin
-                    s1, s2, s3 = i, j, k
+                    locations = [i, j, k]
 
-    return zbest, [s1, s2, s3]
+    return zbest, locations
     
     
 def displaySolution(locations, p, zbest, total_time):
@@ -115,7 +115,7 @@ def read_problem(file):
 
 
 def main(unused_argv):
-    print ('---- P-Center with Gurobi -----')
+    print ('---- 3-Center solved via brute force -----')
     Run_pCenter(p)
 
 
