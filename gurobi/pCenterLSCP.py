@@ -20,6 +20,7 @@ import readDataFiles
 import plot
 from scipy.spatial.distance import cdist
 from gurobipy import *
+setParam('OutputFlag', 0)   # mute solver meta-info
 
 def Run_pCenterLSCP():
     
@@ -41,7 +42,7 @@ def Run_pCenterLSCP():
     solution[p-1,1] = 0
     currP = numSites
     
-    SDsquared = sqDistances[1]
+    SDsquared = sqDistances[0]
     C = computeCoverageMatrix(sqDistMatrix, SDsquared)
 
     BuildModel(m)
@@ -166,8 +167,7 @@ def BuildModel(m):
 
 def SolveModel(m):
     """Solve the problem and print the solution."""
-    m.Params.OutputFlag = 0
-    m.Params.ResultFile = "output.sol"
+    # m.Params.ResultFile = "output.sol"
     m.optimize()
     
     
