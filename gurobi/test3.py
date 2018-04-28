@@ -2,10 +2,11 @@ import numpy as np
 import itertools
 import time
 
-n = 200
+n = 500
+print "n = %d" % n
 np.random.seed(2)
 A = np.random.rand(n,n)
-global_best = 1000000000000000.0
+global_best = np.inf
 #print(A)
 
 # start_time = time.time()
@@ -26,33 +27,33 @@ global_best = 1000000000000000.0
 # print total_time
 #
 #
-start_time = time.time()
-
-for i, j, k in itertools.combinations(range(n), 3):
-    # local_best = np.amax(np.array([A[i,:], A[j,:], A[k,:]]).min(0))
-    # local_best = np.amax(np.minimum(np.minimum(A[i,:], A[j,:]), A[k,:]))
-    local_best = np.minimum(np.minimum(A[i,:], A[j,:]), A[k,:]).max(0)
-    if local_best < global_best:
-        global_best = local_best
-        save_rows = np.array([i, j, k])
-
-total_time = time.time()-start_time
-
-print global_best, save_rows
-print total_time
-
-
-start_time = time.time()
-
-coms = np.fromiter(itertools.combinations(np.arange(n), 3), 'i,i,i').view(('i', 3))
-best = A[coms].min(1).max(1)
-at = best.argmin()
-global_best = best[at]
-save_rows = coms[at]
-
-total_time = time.time()-start_time
-print global_best, save_rows
-print total_time
+# start_time = time.time()
+#
+# for i, j, k in itertools.combinations(range(n), 3):
+#     # local_best = np.amax(np.array([A[i,:], A[j,:], A[k,:]]).min(0))
+#     # local_best = np.amax(np.minimum(np.minimum(A[i,:], A[j,:]), A[k,:]))
+#     local_best = np.minimum(np.minimum(A[i,:], A[j,:]), A[k,:]).max(0)
+#     if local_best < global_best:
+#         global_best = local_best
+#         save_rows = np.array([i, j, k])
+#
+# total_time = time.time()-start_time
+#
+# print global_best, save_rows
+# print total_time
+#
+#
+# start_time = time.time()
+#
+# coms = np.fromiter(itertools.combinations(np.arange(n), 3), 'i,i,i').view(('i', 3))
+# best = A[coms].min(1).max(1)
+# at = best.argmin()
+# global_best = best[at]
+# save_rows = coms[at]
+#
+# total_time = time.time()-start_time
+# print global_best, save_rows
+# print total_time
 
 
 start_time = time.time()

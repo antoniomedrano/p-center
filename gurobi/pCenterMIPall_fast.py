@@ -54,18 +54,21 @@ def Run_pCenter():
         p = i
         
         # find the difference in the coverage matrix from p=i+1 to p=i
-        diff, C = updateCoverCoefficeints(distMatrix, SDmin+.000001, C)
+        diff, C = updateCoverCoefficeints(distMatrix, SDmin+.000005, C)
         
         # update the right hand side of the facility constraint
         m.getConstrByName("c1").setAttr(GRB.Attr.RHS, p)
         for i in range(numDemands):
+            # for assignment variables associated with d > SDmin
             for j in diff[i]:
-                m.chgCoeff(m.getConstrByName("c2[%d]" % i), X[i,j], 0)
-                m.chgCoeff(m.getConstrByName("c4[%d]" % i), X[i,j], 0)
-                # removing constr speeds model up
+                # remove from the coverage and z constraints
+                m.remove(m.getVarByName("x[%d,%d]" % (i,j)))
+                # m.chgCoeff(m.getConstrByName("c2[%d]" % i), X[i,j], 0)
+                # m.chgCoeff(m.getConstrByName("c4[%d]" % i), X[i,j], 0)
+                # remove it's assicuated balinski constraint
                 m.remove(m.getConstrByName("c3[%d,%d]" % (i,j)))
-                # removing var slows model down
-                #m.remove(m.getVarByName("x[%d,%d]" % (i,j)))
+                # delete the variable from the model
+
         
         SolveModel(m)
         SDmin = m.objVal
