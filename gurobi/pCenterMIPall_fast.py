@@ -20,6 +20,7 @@ import readDataFiles
 import plot
 from scipy.spatial.distance import cdist
 from gurobipy import *
+setParam('OutputFlag', 0)   # mute solver meta-info
 
 def Run_pCenter():
     
@@ -36,25 +37,25 @@ def Run_pCenter():
     # p = 1 is a trivial solution min(max(dist))
     p = 1
     SDmin = np.amin(np.amax(distMatrix,0))
-    solution[p-1,1] = SDmin
+    solution[p-1,1] = SDmin**0.5
 
     C = computeCoverageMatrix(distMatrix, SDmin)
     BuildModel(m, 2, distMatrix)
     
     print '  p, SD'
-    displaySolution(p, SDmin)
+    displaySolution(p, SDmin**0.5)
     
     p = 2
     SolveModel(m)
     SDmin = m.objVal
-    solution[p-1,1] = SDmin
-    displaySolution(p, SDmin)
+    solution[p-1,1] = SDmin**0.5
+    displaySolution(p, SDmin**0.5)
     
     for i in range(3, numSites):
         p = i
         
         # find the difference in the coverage matrix from p=i+1 to p=i
-        diff, C = updateCoverCoefficeints(distMatrix, SDmin+.000005, C)
+        diff, C = updateCoverCoefficeints(distMatrix, SDmin+.000001, C)
         
         # update the right hand side of the facility constraint
         m.getConstrByName("c1").setAttr(GRB.Attr.RHS, p)
@@ -72,9 +73,9 @@ def Run_pCenter():
         
         SolveModel(m)
         SDmin = m.objVal
-        solution[p-1,1] = SDmin
+        solution[p-1,1] = SDmin**0.5
         
-        displaySolution(p, SDmin)
+        displaySolution(p, SDmin**0.5)
     
     # solution for p = numSites is SDmin = 0    
     solution[numSites-1,1] = 0
@@ -105,7 +106,7 @@ def computeDistanceMatrix():
     #print A
     
     # Compute the distance matrix, using the euclidean distance
-    distMatrix = cdist(A, B,'euclidean')
+    distMatrix = cdist(A, B,'sqeuclidean')
     
     return distMatrix
     
@@ -187,8 +188,7 @@ def BuildModel(m, p, d):
 
 def SolveModel(m):
     """Solve the problem and print the solution."""
-    m.Params.OutputFlag = 0
-    m.Params.ResultFile = "output.sol"
+    # m.Params.ResultFile = "output.sol"
     m.optimize()
     
     

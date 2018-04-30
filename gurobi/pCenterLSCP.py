@@ -51,10 +51,10 @@ def Run_pCenterLSCP():
     
     while (p < currP):
         currP -= 1
-        solution[currP,1] = SDsquared**0.5
+        solution[currP-1,1] = SDsquared**0.5
         displaySolution(currP, SDsquared)
 
-    for k in range(2,len(sqDistances)):
+    for k in range(1,len(sqDistances)):
         SDsquared = sqDistances[k]
 
         diff, C = updateCoverCoefficeints(sqDistMatrix, SDsquared, C)

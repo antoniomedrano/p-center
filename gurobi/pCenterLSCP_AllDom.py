@@ -59,7 +59,7 @@ def Run_pCenterLSCP():
         solution[currP-1,1] = SDsquared**0.5
         displaySolution(currP, SDsquared)
     
-    for k in range(2,len(sqDistances)):
+    for k in range(1,len(sqDistances)):
         SDsquared = sqDistances[k]
         essential = computeCoverageMatrix(sqDistMatrix, SDsquared)
 
