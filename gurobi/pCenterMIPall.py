@@ -37,11 +37,11 @@ def Run_pCenter():
     # p = 1 is a trivial solution min(max(dist))
     p = 1
     SDmin = np.amin(np.amax(distMatrix,0))
-    solution[p-1,1] = SDmin
+    solution[p-1,1] = SDmin**0.5
     
     BuildModel(m, 0, distMatrix)
     print '  p, SD'
-    displaySolution(p, SDmin)
+    displaySolution(p, SDmin**0.5)
     
     for i in range(2, numSites):
 
@@ -51,9 +51,9 @@ def Run_pCenter():
         
         SolveModel(m)
         SDmin = m.objVal
-        solution[p-1,1] = SDmin
+        solution[p-1,1] = SDmin**0.5
         
-        displaySolution(p, SDmin)
+        displaySolution(p, SDmin**0.5)
     
     # solution for p = numSites is SDmin = 0    
     solution[numSites-1,1] = 0
@@ -84,7 +84,7 @@ def computeDistanceMatrix():
     #print A
     
     # Compute the distance matrix, using the euclidean distance
-    distMatrix = cdist(A, B,'euclidean')
+    distMatrix = cdist(A, B,'sqeuclidean')
 
     return distMatrix
 
