@@ -20,6 +20,7 @@ import readDataFiles
 import plot
 from scipy.spatial.distance import cdist
 from gurobipy import *
+setParam('OutputFlag', 0)   # mute solver meta-info
 
 def RunLSCP(SD):
     
@@ -116,8 +117,7 @@ def BuildModel(m):
 
 def SolveModel(m):
     """Solve the problem and print the solution."""
-    m.Params.OutputFlag = 0
-    m.Params.ResultFile = "output.sol"
+    # m.Params.ResultFile = "output.sol"
     m.optimize()
     
     
