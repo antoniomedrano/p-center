@@ -5,7 +5,7 @@ import time
 n = 431
 np.random.seed(2)
 A = np.random.rand(n,n)
-global_best = 1000000000000000.0
+global_best = np.inf
 #print(A)
 
 start_time = time.time()
@@ -24,7 +24,7 @@ total_time = time.time()-start_time
 print global_best, save_rows
 print total_time
 
-
+global_best = np.inf
 start_time = time.time()
 
 for i, j in combinations(range(n), 2):
@@ -38,7 +38,7 @@ total_time = time.time()-start_time
 print global_best, save_rows
 print total_time
 
-
+global_best = np.inf
 start_time = time.time()
 
 coms = np.fromiter(combinations(np.arange(n), 2), 'i,i').view(('i', 2))

@@ -36,7 +36,7 @@ def RunMIPCppStyleAPI(optimization_problem_type):
     # p = numSites, SD = 0 is a trivial solution
     print '  p, SD'
     p = 1
-    SDmin = np.amin(np.amax(distMatrix,0))
+    SDmin = np.amin(np.amax(distMatrix,0))**0.5
     solution[p-1,1] = SDmin
     displaySolution(p, SDmin)
     
@@ -54,7 +54,7 @@ def RunMIPCppStyleAPI(optimization_problem_type):
 
         BuildModel(solver, X, Y, Z, p, distMatrix)
         SolveModel(solver)
-        SDmin = solver.Objective().Value()
+        SDmin = solver.Objective().Value()**0.5
         solution[p-1,1] = SDmin
         solver.Clear()
         
@@ -90,7 +90,7 @@ def computeDistanceMatrix():
     #print A
     
     # Compute the distance matrix, using the euclidean distance
-    distMatrix = cdist(A, B,'euclidean')
+    distMatrix = cdist(A, B,'sqeuclidean')
 
     return distMatrix
 

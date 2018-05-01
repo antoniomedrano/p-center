@@ -61,7 +61,7 @@ def computeDistanceMatrix():
 
 def SolveModel(p, d):
 
-    zbest = 1000000000000000.0
+    zbest = np.inf
 
     for i in range(numSites):
         for j in range(i+1,numSites):

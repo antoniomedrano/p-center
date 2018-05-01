@@ -45,7 +45,7 @@ def RunLSCPCppStyleAPI(optimization_problem_type):
     iters = 0
     #print solution
     
-    for i in range(1,len(sqDistances)):
+    for i in range(len(sqDistances)):
         SDsquared = sqDistances[i]
         essential = computeCoverageMatrix(sqDistMatrix, SDsquared)
     
