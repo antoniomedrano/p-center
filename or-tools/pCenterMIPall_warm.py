@@ -37,8 +37,8 @@ def RunMIPCppStyleAPI(optimization_problem_type):
     print '  p, SD'
     p = 1
     SDmin = np.amin(np.amax(distMatrix,0))
-    solution[p-1,1] = SDmin
-    displaySolution(p, SDmin)
+    solution[p-1,1] = SDmin**0.5
+    displaySolution(p, SDmin**0.5)
     
     # Xij assignment, Yj facility site, and Z max assignment distance variables
     X = [[None for j in range(numSites)] for i in range(numSites)]
@@ -53,7 +53,7 @@ def RunMIPCppStyleAPI(optimization_problem_type):
         c1.SetUb(p)
         c1.SetLb(p)
         SolveModel(solver)
-        SDmin = solver.Objective().Value()
+        SDmin = solver.Objective().Value()**0.5
         solution[p-1,1] = SDmin
         
         displaySolution(p, SDmin)

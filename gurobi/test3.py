@@ -55,7 +55,7 @@ global_best = np.inf
 # print global_best, save_rows
 # print total_time
 
-
+global_best = np.inf
 start_time = time.time()
 
 chunk = 1000 # define chunk lenght, if to small, the code won't take advantatge 

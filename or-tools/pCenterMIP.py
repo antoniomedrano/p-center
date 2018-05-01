@@ -39,7 +39,7 @@ def RunMIPCppStyleAPI(optimization_problem_type, p):
     SolveModel(solver)
     
     total_time = time.time()-start_time
-    SDmin = solver.Objective().Value()
+    SDmin = solver.Objective().Value()**0.5
     
     displaySolution(Y, p, SDmin, total_time)
     
@@ -65,7 +65,7 @@ def computeDistanceMatrix():
     #print A
     
     # Compute the distance matrix, using the squared distance
-    distMatrix = cdist(A, B,'euclidean')
+    distMatrix = cdist(A, B,'sqeuclidean')
     #
     # distances = np.unique(distMatrix)
     # print np.size(distances)

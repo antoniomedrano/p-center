@@ -37,8 +37,8 @@ def RunMIPCppStyleAPI(optimization_problem_type):
     print '  p, SD'
     p = 1
     SDmin = np.amin(np.amax(distMatrix,0))
-    solution[p-1,1] = SDmin
-    displaySolution(p, SDmin)
+    solution[p-1,1] = SDmin**0.5
+    displaySolution(p, SDmin**0.5)
     Y = [None] * numSites
     Z = None
 
@@ -53,10 +53,10 @@ def RunMIPCppStyleAPI(optimization_problem_type):
         BuildModel(solver, X, Y, Z, p, distMatrix)
         SolveModel(solver)
         SDmin = solver.Objective().Value()
-        solution[p-1,1] = SDmin
+        solution[p-1,1] = SDmin**0.5
         solver.Clear()
         
-        displaySolution(p, SDmin)
+        displaySolution(p, SDmin**0.5)
     
     # solution for p = numSites is SDmin = 0    
     solution[numSites-1,1] = 0
@@ -88,7 +88,7 @@ def computeDistanceMatrix():
     #print A
     
     # Compute the distance matrix, using the euclidean distance
-    distMatrix = cdist(A, B,'euclidean')
+    distMatrix = cdist(A, B,'sqeuclidean')
     
     return distMatrix
     
@@ -128,7 +128,7 @@ def BuildModel(solver, X, Y, Z, p, d):
     objective.SetCoefficient(Z, 1)
     
     # constraint for locating p facilities
-    c1 = solver.Constraint(0,p)
+    c1 = solver.Constraint(p,p)
     
     for j in range(numSites):
         # initialize the Y facility location variables
