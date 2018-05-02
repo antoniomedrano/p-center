@@ -16,6 +16,7 @@
 import sys
 import time
 import numpy as np
+import itertools
 import readDataFiles
 import plot
 from scipy.spatial.distance import cdist
@@ -34,7 +35,7 @@ def Run_pCenter(p):
     total_time = time.time()-start_time
     #SDmin = m.objVal
     
-    displaySolution(locations, p, SDmin, total_time)
+    displaySolution(locations, p, SDmin**0.5, total_time)
     
     
 def computeDistanceMatrix():
@@ -54,23 +55,44 @@ def computeDistanceMatrix():
     #print A
     
     # Compute the distance matrix, using the squared distance
-    distMatrix = cdist(A, B,'euclidean')
+    distMatrix = cdist(A, B,'sqeuclidean')
 
     return distMatrix
 
 
-def SolveModel(p, d):
+def SolveModel(p, A):
 
-    zbest = np.inf
+    n = len(A)
+    global_best = np.inf
+    
+    chunk = 1000 # define chunk lenght, if to small, the code won't take advantatge
+                 # of vectorization, if it is too large, excessive memory usage will
+                 # slow down execution, or Memory Error will be risen
+    combinations = itertools.combinations(range(n),2) # generate iterator containing
+                                            # all possible combinations of 3 columns
+    N = (n*n-n)//2 # number of combinations (length of combinations cannot be
+                         # retrieved because it is an iterator)
+    # generate a list containing how many elements of combinations will be retrieved
+    # per iteration
+    n_chunks, remainder = divmod(N,chunk)
+    counts_list = [chunk for _ in range(n_chunks)]
+    if remainder:
+        counts_list.append(remainder)
 
-    for i in range(numSites):
-        for j in range(i+1,numSites):
-            zmin = np.amax(np.minimum(d[i,:],d[j,:]))
-            if (zmin < zbest):
-                zbest = zmin
-                locations = [i,j]
+    # Iterate one chunk at a time, using vectorized code to treat the chunk
+    for counts in counts_list:
+        # retrieve combinations in current chunk
+        current_comb = np.fromiter(combinations,dtype='i,i',count=counts)\
+                         .view(('i',2))
+        chunk_best = A[current_comb].min(axis=1).max(axis=1) # maximum of element-wise
+                                                             # minimum in current chunk
+        ravel_save_row = chunk_best.argmin() # minimum of maximums in current chunk
+        # check if current chunk contains global minimum
+        if chunk_best[ravel_save_row] < global_best:
+            global_best = chunk_best[ravel_save_row]
+            save_rows = current_comb[ravel_save_row]
 
-    return zbest, locations
+    return global_best, save_rows
     
     
 def displaySolution(locations, p, zbest, total_time):
