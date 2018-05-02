@@ -7,28 +7,11 @@ n = 439
 print "n = %d" % n
 np.random.seed(2)
 A = np.random.rand(n,n)
-global_best = np.inf
 #print(A)
 
+# FYI: Vectored without chunks RUNS OUT OF MEMORY quickly
 
-# RUNS OUT OF MEMORY
-# global_best = np.inf
-# start_time = time.time()
-#
-# coms = np.fromiter(itertools.combinations(np.arange(n), 4), 'i,i,i,i').view(('i', 4))
-# #print len(coms)
-# best = A[coms].min(1).max(1)
-# at = best.argmin()
-# global_best = best[at]
-# save_rows = coms[at]
-#
-# total_time = time.time()-start_time
-#
-# print 'vectored'
-# print global_best, save_rows
-# print total_time
-#
-#
+
 # global_best = np.inf
 # start_time = time.time()
 #
