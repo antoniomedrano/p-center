@@ -38,7 +38,7 @@ def your_func(A):
   return global_best, save_rows
 
   
-n = 500
+n = 439
 print "n = %d" % n
 np.random.seed(2)
 A = np.random.rand(n,n)

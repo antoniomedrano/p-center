@@ -4,7 +4,7 @@ import time
 
 #Min and max library calls may be costly for only 3 values
 @nb.njit()
-def max_min_3(A,B,C):
+def min_3(A,B,C):
   max_of_min=-np.inf
   for i in range(A.shape[0]):
     loc_min=A[i]
@@ -17,6 +17,7 @@ def max_min_3(A,B,C):
       max_of_min=loc_min
 
   return max_of_min
+  
 
 @nb.njit(parallel=True)
 def your_func(A):
@@ -54,7 +55,7 @@ def your_func(A):
   return all_global_best, rows
 
   
-n = 500
+n = 439
 print "n = %d" % n
 np.random.seed(2)
 A = np.random.rand(n,n)
