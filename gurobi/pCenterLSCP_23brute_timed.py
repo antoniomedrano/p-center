@@ -1,4 +1,4 @@
-# Copyright 2017 Antonio Medrano
+# Copyright 2018 Antonio Medrano
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -18,6 +18,7 @@ import time
 import numpy as np
 import readDataFiles
 import plot
+import pCenterBrute as brute
 from scipy.spatial.distance import cdist
 from gurobipy import *
 setParam('OutputFlag', 0)   # mute solver meta-info
@@ -35,7 +36,7 @@ def Run_pCenterLSCP():
     print '  p, SD'
     p = numSites
     SDsquared = 0   
-    displaySolution(p, SDsquared)
+    displaySolution(p, SDsquared, 0)
     
     solution = np.empty([numSites, 2])
     start_time_mini = time.time()
@@ -54,7 +55,7 @@ def Run_pCenterLSCP():
         currP -= 1
         total_time_mini = time.time()-start_time_mini
         solution[currP-1,1] = SDsquared**0.5
-        displaySolution(currP, SDsquared)
+        displaySolution(currP, SDsquared, total_time_mini)
         start_time_mini = time.time()
 
     for k in range(1,len(sqDistances)):
@@ -74,15 +75,49 @@ def Run_pCenterLSCP():
         # check the output
         while (p < currP):
             currP -= 1
+            total_time_mini = time.time()-start_time_mini
             solution[currP-1,1] = SDsquared**0.5
-            displaySolution(currP, SDsquared)
-                
-        # terminate the search when p == 1
+            displaySolution(currP, SDsquared, total_time_mini)
+            start_time_mini = time.time()
+
+        # solve brute force for p == 3
+        if (p == 4):
+            p = 3
+            if numSites > 300:
+                SDsquared, rows = brute.nbParallel3(sqDistMatrix, numSites)
+            elif numSites > 125:
+                SDsquared, rows = brute.nbSerial3(sqDistMatrix, numSites)
+            else:
+                SDsquared, rows = brute.chunk3(sqDistMatrix, numSites)
+            
+            total_time_mini = time.time()-start_time_mini
+            displaySolution(p, SDsquared, total_time_mini)
+            start_time_mini = time.time()
+            iters = k+1
+
+        # solve brute force for p == 2
+        if (p == 3):
+            p = 2
+            total_time_mini = time.time()-start_time_mini
+            if numSites > 1470:
+                SDsquared, rows = brute.nbParallel2(sqDistMatrix, numSites)
+            elif numSites > 432:
+                SDsquared, rows = brute.nbSerial2(sqDistMatrix, numSites)
+            else:
+                SDsquared, rows = brute.chunk2(sqDistMatrix, numSites)
+            
+            total_time_mini = time.time()-start_time_mini
+            displaySolution(p, SDsquared, total_time_mini)
+            start_time_mini = time.time()
+            iters = k+1
+
+        # solve brute force for p == 1
         if (p == 2):
             p = 1
             SDsquared = np.amin(np.amax(sqDistMatrix,0))
             solution[p-1,1] = SDsquared**0.5
-            displaySolution(p, SDsquared)
+            total_time_mini = time.time()-start_time_mini
+            displaySolution(p, SDsquared, total_time_mini)
             iters = k+1
             break
         if (p == 1):
@@ -174,9 +209,9 @@ def SolveModel(m):
     m.optimize()
     
     
-def displaySolution(p, SDsquared):
+def displaySolution(p, SDsquared, time):
     # The objective value and the minimum service distance
-    print '%3d, %f' % (p, SDsquared**0.5)
+    print '%3d, %f, %f' % (p, SDsquared**0.5, time)
     
 
 def read_problem(file):
