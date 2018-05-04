@@ -41,7 +41,6 @@ def Run_pCenter(p):
     BuildModel(m, p, distMatrix)
     
     SolveModel(m)
-    SDmin = m.objVal
     
     total_time = time.time()-start_time
     #SDmin = m.objVal
@@ -66,7 +65,7 @@ def computeDistanceMatrix():
     #print A
     
     # Compute the distance matrix, using the squared distance
-    distMatrix = cdist(A, B,'euclidean')
+    distMatrix = cdist(A, B,'sqeuclidean')
 
     return distMatrix
     
@@ -150,7 +149,7 @@ def displaySolution(m, p, total_time):
     print
     # The objective value of the solution.
     print 'p = %d' % p
-    print 'SD = %f' % m.objVal
+    print 'SD = %f' % m.objVal**0.5
     # print the selected sites
     print
     for j in range(numSites):

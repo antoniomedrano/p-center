@@ -35,7 +35,7 @@ def Run_pCenterLSCP():
     print '  p, SD'
     p = numSites
     SDsquared = 0   
-    displaySolution(p, SDsquared)
+    displaySolution(p, SDsquared, 0)
     
     solution = np.empty([numSites, 2])
     start_time_mini = time.time()
@@ -54,7 +54,7 @@ def Run_pCenterLSCP():
         currP -= 1
         total_time_mini = time.time()-start_time_mini
         solution[currP-1,1] = SDsquared**0.5
-        displaySolution(currP, SDsquared)
+        displaySolution(currP, SDsquared, total_time_mini)
         start_time_mini = time.time()
 
     for k in range(1,len(sqDistances)):
@@ -74,15 +74,18 @@ def Run_pCenterLSCP():
         # check the output
         while (p < currP):
             currP -= 1
+            total_time_mini = time.time()-start_time_mini
             solution[currP-1,1] = SDsquared**0.5
-            displaySolution(currP, SDsquared)
+            displaySolution(currP, SDsquared, total_time_mini)
+            start_time_mini = time.time()
                 
         # terminate the search when p == 1
         if (p == 2):
             p = 1
+            total_time_mini = time.time()-start_time_mini
             SDsquared = np.amin(np.amax(sqDistMatrix,0))
             solution[p-1,1] = SDsquared**0.5
-            displaySolution(p, SDsquared)
+            displaySolution(p, SDsquared, total_time_mini)
             iters = k+1
             break
         if (p == 1):
@@ -174,9 +177,9 @@ def SolveModel(m):
     m.optimize()
     
     
-def displaySolution(p, SDsquared):
+def displaySolution(p, SDsquared, time):
     # The objective value and the minimum service distance
-    print '%3d, %f' % (p, SDsquared**0.5)
+    print '%3d, %f, %f' % (p, SDsquared**0.5, time)
     
 
 def read_problem(file):
