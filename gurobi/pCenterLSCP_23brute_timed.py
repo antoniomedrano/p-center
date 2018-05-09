@@ -186,7 +186,7 @@ def BuildModel(m):
     # Each has a coefficient of 1 in the objective
     X = m.addVars(numSites,
                   vtype=GRB.BINARY,
-                  obj=np.ones(numSites))
+                  obj=1)
     
     # Define Coverage Constraints:
     for i in range(numDemands):
