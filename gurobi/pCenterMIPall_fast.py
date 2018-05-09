@@ -55,6 +55,7 @@ def Run_pCenter():
         p = i
         
         # find the difference in the coverage matrix from p=i+1 to p=i
+        # add a small amount to avoid issues with numerical truncation
         diff, C = updateCoverCoefficeints(distMatrix, SDmin+.000001, C)
         
         # update the right hand side of the facility constraint
@@ -62,13 +63,13 @@ def Run_pCenter():
         for i in range(numDemands):
             # for assignment variables associated with d > SDmin
             for j in diff[i]:
-                # remove from the coverage and z constraints
+                # delete the variable from the model
                 m.remove(m.getVarByName("x[%d,%d]" % (i,j)))
+                # remove from the coverage and z constraints associated with the variable
                 # m.chgCoeff(m.getConstrByName("c2[%d]" % i), X[i,j], 0)
                 # m.chgCoeff(m.getConstrByName("c4[%d]" % i), X[i,j], 0)
-                # remove it's assicuated balinski constraint
+                # remove it's associated balinski constraint
                 m.remove(m.getConstrByName("c3[%d,%d]" % (i,j)))
-                # delete the variable from the model
 
         
         SolveModel(m)
@@ -143,7 +144,6 @@ def BuildModel(m, p, d):
     for i in range(numDemands):
         for j in cover_rows[i]:
             X[i,j] = m.addVar(vtype=GRB.BINARY, name="x[%d,%d]" % (i,j))
-    m.update()
     
     # # More standard way, the above takes advantage of some density
     # X = m.addVars(numDemands, numSites,
@@ -153,15 +153,15 @@ def BuildModel(m, p, d):
     # Facility Site binary decision variables Y
     # =1 if facility is located at site j
     Y = m.addVars(numSites,
-                  vtype=GRB.BINARY,
-                  name="Y")
+                  vtype=GRB.BINARY)
 
     # Cover distance variable Z
     # continuous variable to be minimized
-    Z = m.addVar(vtype=GRB.CONTINUOUS, obj = 1.0, name="Z")
+    Z = m.addVar(vtype=GRB.CONTINUOUS, obj = 1.0)
     
     # Define Facility Constraint (c1):
-    m.addConstr(quicksum(Y[j] for j in range(numSites)) <= p, "c1")
+    # m.addConstr(Y[j] for j in range(numSites)) <= p, "c1") # uses old notation style
+    m.addConstr(Y.sum() <= p, "c1")   # uses new tupledict notation style
 
     # Define Assignment Constraints (c2)
     # Define Z to be the largest distance from any demand to any facility (c4)
