@@ -106,18 +106,18 @@ def BuildModel(m, p, d):
     Z = m.addVar(vtype=GRB.CONTINUOUS, obj = 1.0)
     
     # Define Facility Constraint (c1):
-    # m.addConstr(Y[j] for j in range(numSites)) <= p, "c1") # uses old notation style
+    # m.addConstr(quicksum(Y[j] for j in range(numSites)) <= p, "c1") # uses old notation style
     m.addConstr(Y.sum() <= p, "c1")   # uses new tupledict notation style
     
     # Define Assignment Constraints (c2)
     # Define Z to be the largest distance from any demand to any facility (c4)
     
     # make constraint 2 using tupledict notation
-    m.addConstrs((X.sum(i, '*') == 1 for i in range(numDemands)), "c2")
+    # m.addConstrs((X.sum(i, '*') == 1 for i in range(numDemands)), "c2")
     # m.addConstrs((X.prod(d, i, '*') <= Z for i in range(numDemands)), "c4") # doesn't work
 
     for i in range(numDemands):
-        # m.addConstr(quicksum(X[i,j] for j in range(numSites)) == 1, "c2[%d]" % i)
+        m.addConstr(quicksum(X[i,j] for j in range(numSites)) == 1, "c2[%d]" % i)
         m.addConstr(quicksum(X[i,j]*d[i,j] for j in range(numSites)) - Z <= 0, "c4[%d]" % i)
 
         for j in range(numSites):
