@@ -121,7 +121,6 @@ def computeDistances():
 def computeCoverageMatrix(sqDistMatrix, SDsquared):
         
     #declare a couple variables
-    global distances
     global numDemands
     global numSites
     global cover_rows
@@ -165,11 +164,8 @@ def dominationTrim(A, A2):
     rows = np.array(range(r))
     cols = np.array(range(c))
     essential = np.zeros(c)
-    
-    k = 0
-    
+        
     while True:
-        k += 1
         c_keeps = np.ones(c)
         r_keeps = np.ones(r)
 
