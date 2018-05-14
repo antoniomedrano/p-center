@@ -90,6 +90,9 @@ def computeDistanceMatrix():
 
 def BuildModel(m, p, d):
     
+    rNumD = range(numDemands)
+    rNumS = range(numSites)
+    
     # DECLARE VARIABLES:
     # Assignment variables X
     # =1 if demand i is assigned to facility j
@@ -109,18 +112,22 @@ def BuildModel(m, p, d):
     # m.addConstr(quicksum(Y[j] for j in range(numSites)) <= p, "c1") # uses old notation style
     m.addConstr(Y.sum() <= p, "c1")   # uses new tupledict notation style
     
+    ### FYI: Making constraints c2 and c4 using Tupledict notation makes the model slower
     # Define Assignment Constraints (c2)
     # Define Z to be the largest distance from any demand to any facility (c4)
     
     # make constraint 2 using tupledict notation
-    # m.addConstrs((X.sum(i, '*') == 1 for i in range(numDemands)), "c2")
-    # m.addConstrs((X.prod(d, i, '*') <= Z for i in range(numDemands)), "c4") # doesn't work
+    # m.addConstrs((X.sum(i, '*') == 1 for i in rNumD), "c2")
+    #
+    # # make constraint 4 using tupledict notation
+    # dDict = dict(((i,j), d[i][j]) for i, j in itertools.product(rNumD, rNumS))
+    # m.addConstrs((X.prod(dDict, i, '*') <= Z for i in rNumD), "c4")
 
-    for i in range(numDemands):
+    for i in rNumD:
         m.addConstr(quicksum(X[i,j] for j in range(numSites)) == 1, "c2[%d]" % i)
         m.addConstr(quicksum(X[i,j]*d[i,j] for j in range(numSites)) - Z <= 0, "c4[%d]" % i)
 
-        for j in range(numSites):
+        for j in rNumS:
             # add the balinsky assignment constraints (c3)
             # Yj - Xij >= 0 <--- canonical form of the assignment constraint
             m.addConstr(X[i,j] <= Y[j], "c3[%d,%d]" % (i,j))
