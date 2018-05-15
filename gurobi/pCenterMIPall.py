@@ -124,8 +124,8 @@ def BuildModel(m, p, d):
     # m.addConstrs((X.prod(dDict, i, '*') <= Z for i in rNumD), "c4")
 
     for i in rNumD:
-        m.addConstr(quicksum(X[i,j] for j in range(numSites)) == 1, "c2[%d]" % i)
-        m.addConstr(quicksum(X[i,j]*d[i,j] for j in range(numSites)) - Z <= 0, "c4[%d]" % i)
+        m.addConstr(quicksum(X[i,j] for j in rNumS) == 1, "c2[%d]" % i)
+        m.addConstr(quicksum(X[i,j]*d[i,j] for j in rNumS) - Z <= 0, "c4[%d]" % i)
 
         for j in rNumS:
             # add the balinsky assignment constraints (c3)

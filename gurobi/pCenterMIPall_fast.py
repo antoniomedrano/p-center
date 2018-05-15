@@ -92,9 +92,6 @@ def Run_pCenter():
     
 def computeDistanceMatrix():
         
-    #declare a couple variables
-    global siteIDs
-    
     # Pull out just the site/demand IDs from the data
     siteIDs = sites[:,0]
     
