@@ -99,10 +99,6 @@ def Run_pCenterLSCP():
     
 def computeDistances():
         
-    #declare a couple variables
-    global distances
-    global siteIDs
-    
     # Pull out just the site/demand IDs from the data
     siteIDs = sites[:,0]
     
