@@ -13,11 +13,9 @@
 #
 # Author: Antonio Medrano
 
-import sys
 import time
 import numpy as np
 import readDataFiles
-import plot
 from scipy.spatial.distance import cdist
 from gurobipy import *
 setParam('OutputFlag', 0)   # mute solver meta-info
@@ -109,7 +107,7 @@ def BuildModel(m, p, d):
     Z = m.addVar(vtype=GRB.CONTINUOUS, obj = 1.0)
     
     # Define Facility Constraint (c1):
-    # m.addConstr(quicksum(Y[j] for j in range(numSites)) <= p, "c1") # uses old notation style
+    #m.addConstr(quicksum(Y[j] for j in range(numSites)) <= p, "c1") # uses old notation style
     m.addConstr(Y.sum() <= p, "c1")   # uses new tupledict notation style
     
     ### FYI: Making constraints c2 and c4 using Tupledict notation makes the model slower

@@ -13,11 +13,9 @@
 #
 # Author: Antonio Medrano
 
-import sys
 import time
 import numpy as np
 import readDataFiles
-import plot
 import pCenterBrute as brute
 from scipy.spatial.distance import cdist
 from gurobipy import *

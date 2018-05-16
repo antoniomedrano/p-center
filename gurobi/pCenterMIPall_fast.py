@@ -13,11 +13,9 @@
 #
 # Author: Antonio Medrano
 
-import sys
 import time
 import numpy as np
 import readDataFiles
-import plot
 from scipy.spatial.distance import cdist
 from gurobipy import *
 setParam('OutputFlag', 0)   # mute solver meta-info
