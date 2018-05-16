@@ -142,11 +142,6 @@ def BuildModel(m, p, d):
         for j in cover_rows[i]:
             X[i,j] = m.addVar(vtype=GRB.BINARY, name="x[%d,%d]" % (i,j))
     
-    # # More standard way, the above takes advantage of some density
-    # X = m.addVars(numDemands, numSites,
-    #               vtype=GRB.BINARY,
-    #               name="X")
-    
     # Facility Site binary decision variables Y
     # =1 if facility is located at site j
     Y = m.addVars(numSites,

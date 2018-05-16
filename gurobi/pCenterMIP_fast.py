@@ -94,12 +94,6 @@ def BuildModel(m, p, d):
     for i in range(numDemands):
         for j in cover_rows[i]:
             X[i,j] = m.addVar(vtype=GRB.BINARY, name="x[%d,%d]" % (i,j))
-    m.update()
-    
-    # # More standard way, the above takes advantage of some density
-    # X = m.addVars(numDemands, numSites,
-    #               vtype=GRB.BINARY,
-    #               name="X")
     
     # Facility Site binary decision variables Y
     # =1 if facility is located at site j
@@ -112,7 +106,7 @@ def BuildModel(m, p, d):
     Z = m.addVar(vtype=GRB.CONTINUOUS, obj = 1.0, name="Z")
     
     # Define Facility Constraint (c1):
-    m.addConstr(quicksum(Y[j] for j in range(numSites)) <= p, "c1")
+    m.addConstr(Y.sum() <= p, "c1")   # uses new tupledict notation style
 
     # Define Assignment Constraints (c2)
     # Define Z to be the largest distance from any demand to any facility (c4)

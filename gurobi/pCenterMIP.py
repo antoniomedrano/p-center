@@ -86,10 +86,9 @@ def BuildModel(m, p, d):
     # Cover distance variable Z
     # continuous variable to be minimized
     Z = m.addVar(vtype=GRB.CONTINUOUS, obj = 1.0, name="Z")
-    m.update()
     
     # Define Facility Constraint (c1):
-    m.addConstr(quicksum(Y[j] for j in range(numSites)) == p, "c1")
+    m.addConstr(Y.sum() <= p, "c1")   # uses new tupledict notation style
 
     # Define Assignment Constraints (c2)
     # Define Z to be the largest distance from any demand to any facility (c4)
@@ -104,9 +103,8 @@ def BuildModel(m, p, d):
 
     # The objective is to minimize the number of located facilities
     m.modelSense = GRB.MINIMIZE
-    #m.setObjective(Z, GRB.MINIMIZE)
+
     m.update()
-    
     print 'Number of variables = %d' % m.numvars
     print 'Number of constraints = %d' % m.numconstrs
     #m.printStats()
