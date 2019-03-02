@@ -77,15 +77,15 @@ def SolveModel(p, d):
     
 def displaySolution(locations, p, zbest, total_time):
 
-    print 'Total problem solved in %f seconds' % total_time
-    print
+    print('Total problem solved in %f seconds' % total_time)
+    print()
     # The objective value of the solution.
-    print 'p = %d' % p
-    print 'SD = %f' % zbest
+    print('p = %d' % p)
+    print('SD = %f' % zbest)
     # print the selected sites
     print
     for j in locations:
-        print "Site selected %s" % int(siteIDs[j])
+        print("Site selected %s" % int(siteIDs[j]))
     
     # plot solution
     # plot.plotSolution(sites, Y, range(numSites), SDmin)
@@ -102,7 +102,7 @@ def read_problem(file):
         elif (file[-3:].lower() == "tsp"):
             sites = readDataFiles.readTSP(file)
     except IOError:
-        print 'Error reading file'
+        print('Error reading file')
         raise
         
     numSites = sites.shape[0]    
@@ -110,12 +110,12 @@ def read_problem(file):
     
     #plot.plotData(sites)
     
-    print '%d locations' % numSites
-    print 'Finished Reading File!'
+    print('%d locations' % numSites)
+    print('Finished Reading File!')
 
 
 def main(unused_argv):
-    print ('---- 3-Center solved via brute force -----')
+    print('---- 3-Center solved via brute force -----')
     Run_pCenter(p)
 
 
@@ -124,15 +124,15 @@ if __name__ == '__main__':
   if len(sys.argv) > 2 and len(sys.argv) <= 3:
     file = '../data/' + sys.argv[2]
     p = float(sys.argv[1])
-    print "Problem instance from: ", file
+    print("Problem instance from: ", file)
     read_problem(file)
     main(None)
   elif len(sys.argv) > 1 and len(sys.argv) <= 2:
     p = float(sys.argv[1])
     file = '../data/swain.dat'
-    print "Problem instance from: ", file
+    print("Problem instance from: ", file)
     read_problem(file)
     main(None)
   else:
-    print "Please Pass: Service Distance; Data to Use"
-    print "Problem not executed!"
+    print("Please Pass: Service Distance; Data to Use")
+    print("Problem not executed!")

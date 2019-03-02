@@ -13,11 +13,9 @@
 #
 # Author: Antonio Medrano
 
-import sys
 import time
 import numpy as np
 import readDataFiles
-import plot
 from scipy.sparse import csc_matrix
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
@@ -121,7 +119,6 @@ def computeDistances():
 def computeCoverageMatrix(sqDistMatrix, SDsquared):
         
     #declare a couple variables
-    #global distances
     global numDemands
     global numSites
     global cover_rows
