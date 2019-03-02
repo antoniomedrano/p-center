@@ -4,7 +4,7 @@ import itertools
 import time
 
 n = 100
-print "n = %d" % n
+print("n = %d" % n)
 np.random.seed(2)
 A = np.random.rand(n,n)
 #print(A)
@@ -76,9 +76,9 @@ for counts in counts_list:
 
 total_time = time.time()-start_time
 
-print 'chunked vectored'
-print global_best, save_rows
-print total_time
+print('chunked vectored')
+print(global_best, save_rows)
+print(total_time)
 
 
 #Min and max library calls may be costly for only 3 values
@@ -120,9 +120,9 @@ start_time = time.time()
 global_best, save_rows = your_func(A)
 total_time = time.time()-start_time
 
-print 'numba serial'
-print global_best, save_rows
-print total_time
+print('numba serial')
+print(global_best, save_rows)
+print(total_time)
 
 
 @nb.njit(parallel=True)
@@ -166,6 +166,6 @@ start_time = time.time()
 global_best, save_rows = your_func_parallel(A)
 total_time = time.time()-start_time
 
-print 'numba parallel'
-print global_best, save_rows
-print total_time
+print('numba parallel')
+print(global_best, save_rows)
+print(total_time)
