@@ -131,8 +131,8 @@ def displaySolution(m, p, total_time):
         if (v.x == 1.0):
             print("Site selected %s" % int(siteIDs[j]))
     
-    # plot solution
-    # plot.plotSolution(sites, Y, range(numSites), SDmin)
+    #plot solution
+    plot.plotSolution(sites, v, range(numSites), SDmin)
     
 
 def read_problem(file):
