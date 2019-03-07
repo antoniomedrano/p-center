@@ -36,7 +36,6 @@ def Run_pCenterLSCP():
     displaySolution(p, SDsquared)
     
     solution = np.empty([numSites, 2])
-    start_time_mini = time.time()
     # solution[:,0] = range(1, numSites+1)
     # solution[p-1,1] = 0
     currP = numSites
@@ -50,10 +49,8 @@ def Run_pCenterLSCP():
     
     while (p < currP):
         currP -= 1
-        total_time_mini = time.time()-start_time_mini
         solution[currP-1,1] = SDsquared**0.5
         displaySolution(currP, SDsquared)
-        start_time_mini = time.time()
 
     for k in range(1,len(sqDistances)):
         SDsquared = sqDistances[k]
