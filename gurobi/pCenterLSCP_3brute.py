@@ -38,7 +38,6 @@ def Run_pCenterLSCP():
     displaySolution(p, SDsquared)
     
     solution = np.empty([numSites, 2])
-    #start_time_mini = time.time()
     # solution[:,0] = range(1, numSites+1)
     # solution[p-1,1] = 0
     currP = numSites
@@ -78,7 +77,7 @@ def Run_pCenterLSCP():
         # solve brute force for p == 3
         if (p == 4):
             p = 3
-            if numSites > 2000:
+            if numSites > 263:
                 SDsquared, rows = brute.nbParallel3(sqDistMatrix, numSites)
             elif numSites > 132:
                 SDsquared, rows = brute.nbSerial3(sqDistMatrix, numSites)
@@ -91,9 +90,9 @@ def Run_pCenterLSCP():
         # solve brute force for p == 2
         if (p == 3):
             p = 2
-            if numSites > 2000:
+            if numSites > 1100:
                 SDsquared, rows = brute.nbParallel2(sqDistMatrix, numSites)
-            elif numSites > 495:
+            elif numSites > 507:
                 SDsquared, rows = brute.nbSerial2(sqDistMatrix, numSites)
             else:
                 SDsquared, rows = brute.chunk2(sqDistMatrix, numSites)
