@@ -33,7 +33,7 @@ def Run_pCenterLSCP():
     sqDistances, sqDistMatrix = computeDistances()
     
     # p = numSites, SD = 0 is a trivial solution
-    print '  p, SD'
+    print('  p, SD')
     p = numSites
     SDsquared = 0   
     displaySolution(p, SDsquared, 0)
@@ -83,9 +83,9 @@ def Run_pCenterLSCP():
         # solve brute force for p == 3
         if (p == 4):
             p = 3
-            if numSites > 300:
+            if numSites > 263:
                 SDsquared, rows = brute.nbParallel3(sqDistMatrix, numSites)
-            elif numSites > 125:
+            elif numSites > 132:
                 SDsquared, rows = brute.nbSerial3(sqDistMatrix, numSites)
             else:
                 SDsquared, rows = brute.chunk3(sqDistMatrix, numSites)
@@ -99,9 +99,9 @@ def Run_pCenterLSCP():
         if (p == 3):
             p = 2
             total_time_mini = time.time()-start_time_mini
-            if numSites > 1470:
+            if numSites > 1110:
                 SDsquared, rows = brute.nbParallel2(sqDistMatrix, numSites)
-            elif numSites > 432:
+            elif numSites > 507:
                 SDsquared, rows = brute.nbSerial2(sqDistMatrix, numSites)
             else:
                 SDsquared, rows = brute.chunk2(sqDistMatrix, numSites)
@@ -126,10 +126,10 @@ def Run_pCenterLSCP():
         
     total_time = time.time()-start_time
     #print solution
-    print
-    print '%d LSCP distances evaluated' % iters
-    print 'Total problem solved in %f seconds' % total_time
-    print
+    print()
+    print('%d LSCP distances evaluated' % iters)
+    print('Total problem solved in %f seconds' % total_time)
+    print()
     #plot.plotTradeoff(file, solution)
     
 def computeDistances():
@@ -210,7 +210,7 @@ def SolveModel(m):
     
 def displaySolution(p, SDsquared, time):
     # The objective value and the minimum service distance
-    print '%3d, %f, %f' % (p, SDsquared**0.5, time)
+    print('%3d, %f, %f' % (p, SDsquared**0.5, time))
     
 
 def read_problem(file):
@@ -224,17 +224,17 @@ def read_problem(file):
         elif (file[-3:].lower() == "tsp"):
             sites = readDataFiles.readTSP(file)
     except IOError:
-        print 'Error reading file'
+        print('Error reading file')
         raise
         
     numSites = sites.shape[0]    
     numDemands = numSites
     # plot.plotData(sites)
-    print '%d locations' % numSites
+    print('%d locations' % numSites)
     
 
 def main(unused_argv):
-    print ('---- pCenterLSCP with Gurobi -----')
+    print('---- pCenterLSCP with Gurobi -----')
     Run_pCenterLSCP()
 
 
@@ -242,16 +242,16 @@ def main(unused_argv):
 if __name__ == '__main__':
   if len(sys.argv) > 1 and len(sys.argv) <= 2:
     file = '../data/' + sys.argv[1]
-    print
-    print "Problem instance from: ", file
+    print()
+    print("Problem instance from: ", file)
     read_problem(file)
     main(sys.argv[1])
   elif len(sys.argv) > 0 and len(sys.argv) <= 1:
     file = '../data/swain.dat'
-    print
-    print "Problem instance from: ", file
+    print()
+    print("Problem instance from: ", file)
     read_problem(file)
     main('swain.dat')
   else:
-    print "Please Pass: Service Distance; Data to Use"
-    print "Problem not executed!"
+    print("Please Pass: Service Distance; Data to Use")
+    print("Problem not executed!")

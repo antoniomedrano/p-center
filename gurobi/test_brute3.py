@@ -127,50 +127,53 @@ def main(input):
   print(total_time)
 
 
-  # @nb.njit(parallel=True)
-  # def your_func_parallel(A):
-  #   n=A.shape[0]
-  #   all_global_best=np.inf
-  #   rows=np.empty((3),dtype=np.uint64)
-  #   save_rows=np.empty((n,3),dtype=np.uint64)
-  #   global_best_Temp=np.empty((n),dtype=A.dtype)
-  #   global_best_Temp[:]=np.inf
+  @nb.njit(parallel=True)
+  def your_func_parallel(A):
+    n=A.shape[0]
+    all_global_best=np.inf
+    rows=np.empty((3),dtype=np.uint64)
+    save_rows=np.empty((n,3),dtype=np.uint64)
+    global_best_Temp=np.empty((n),dtype=A.dtype)
+    global_best_Temp[:]=np.inf
 
-  #   for i in range(n-2):
-  #       for j in nb.prange(i+1, n-1):
-  #           global_best=np.inf
-  #           for k in range(j+1, n):
-  #               # find the maximum of the element-wise minimum of the three vectors
-  #               local_best = max_min_3(A[i,:], A[j,:], A[k,:])
-  #               # if local_best is lower than global_best, update global_best
-  #               if (local_best < global_best):
-  #                   global_best = local_best
-  #                   row_1 = i
-  #                   row_2 = j
-  #                   row_3 = k
+    for i in range(n-2):
+        for j in nb.prange(i+1, n-1):
+            row_1=0
+            row_2=0
+            row_3=0
+            global_best=np.inf
+            for k in range(j+1, n):
+                # find the maximum of the element-wise minimum of the three vectors
+                local_best = max_min_3(A[i,:], A[j,:], A[k,:])
+                # if local_best is lower than global_best, update global_best
+                if (local_best < global_best):
+                    global_best = local_best
+                    row_1 = i
+                    row_2 = j
+                    row_3 = k
 
-  #           save_rows[j,0]=row_1
-  #           save_rows[j,1]=row_2
-  #           save_rows[j,2]=row_3
-  #           global_best_Temp[j]=global_best
+            save_rows[j,0]=row_1
+            save_rows[j,1]=row_2
+            save_rows[j,2]=row_3
+            global_best_Temp[j]=global_best
 
-  #       ind=np.argmin(global_best_Temp)
-  #       if (global_best_Temp[ind]<all_global_best):
-  #           # rows=save_rows[ind,:]
-  #           rows[0] = save_rows[ind,0]
-  #           rows[1] = save_rows[ind,1]
-  #           rows[2] = save_rows[ind,2]
-  #           all_global_best=global_best_Temp[ind]
+        ind=np.argmin(global_best_Temp)
+        if (global_best_Temp[ind]<all_global_best):
+            # rows=save_rows[ind,:]
+            rows[0] = save_rows[ind,0]
+            rows[1] = save_rows[ind,1]
+            rows[2] = save_rows[ind,2]
+            all_global_best=global_best_Temp[ind]
 
-  #   return all_global_best, rows
+    return all_global_best, rows
 
-  # start_time = time.time()
-  # global_best, save_rows = your_func_parallel(A)
-  # total_time = time.time()-start_time
+  start_time = time.time()
+  global_best, save_rows = your_func_parallel(A)
+  total_time = time.time()-start_time
 
-  # print('numba parallel')
-  # print(global_best, save_rows)
-  # print(total_time)
+  print('numba parallel')
+  print(global_best, save_rows)
+  print(total_time)
 
 """ Main will take in 1 arguments: n-Facilities"""
 if __name__ == '__main__':

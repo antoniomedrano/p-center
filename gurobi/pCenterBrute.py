@@ -91,6 +91,8 @@ def nbParallel2(A, n):
 
   for i in range(n-1):
       for j in nb.prange(i+1, n):
+          row_1=0
+          row_2=0
           global_best=np.inf
           # find the maximum of the element-wise minimum of the three vectors
           local_best = max_min_2(A[i,:], A[j,:])
@@ -194,6 +196,9 @@ def nbParallel3(A, n):
 
   for i in range(n-2):
       for j in nb.prange(i+1, n-1):
+          row_1=0
+          row_2=0
+          row_3=0
           global_best=np.inf
           for k in range(j+1, n):
               # find the maximum of the element-wise minimum of the three vectors
@@ -306,6 +311,9 @@ def nbParallel4(A, n):
   for i in range(n-3):
       for j in nb.prange(i+1, n-2):
           global_best=np.inf
+          row_1=0
+          row_2=0
+          row_3=0
           for k in range(j+1, n-1):
               for l in range(k+1, n):
                   # find the maximum of the element-wise minimum of the three vectors
