@@ -77,7 +77,7 @@ def Run_pCenterLSCP():
         # solve brute force for p == 3
         if (p == 4):
             p = 3
-            if numSites > 265:
+            if numSites > 263:
                 SDsquared, rows = brute.nbParallel3(sqDistMatrix, numSites)
             elif numSites > 132:
                 SDsquared, rows = brute.nbSerial3(sqDistMatrix, numSites)
@@ -92,7 +92,7 @@ def Run_pCenterLSCP():
             p = 2
             if numSites > 1100:
                 SDsquared, rows = brute.nbParallel2(sqDistMatrix, numSites)
-            elif numSites > 495:
+            elif numSites > 507:
                 SDsquared, rows = brute.nbSerial2(sqDistMatrix, numSites)
             else:
                 SDsquared, rows = brute.chunk2(sqDistMatrix, numSites)

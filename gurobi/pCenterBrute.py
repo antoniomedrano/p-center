@@ -314,6 +314,7 @@ def nbParallel4(A, n):
           row_1=0
           row_2=0
           row_3=0
+          row_4=0
           for k in range(j+1, n-1):
               for l in range(k+1, n):
                   # find the maximum of the element-wise minimum of the three vectors
