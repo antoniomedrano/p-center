@@ -125,14 +125,15 @@ def displaySolution(m, p, total_time):
     print('p = %d' % p)
     print('SD = %f' % m.objVal**0.5)
     # print the selected sites
-    print
+    print()
     for j in range(numSites):
         v = m.getVarByName("Y[%d]" % j)
         if (v.x == 1.0):
             print("Site selected %s" % int(siteIDs[j]))
     
     #plot solution
-    plot.plotSolution(sites, v, range(numSites), SDmin)
+    # needs fixing for gurobi
+    #plot.plotSolution(sites, m.Y, range(numSites), m.objVal**0.5)
     
 
 def read_problem(file):
