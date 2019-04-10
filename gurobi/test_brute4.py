@@ -14,41 +14,41 @@ def main(input):
 
 # FYI: Vectored without chunks RUNS OUT OF MEMORY quickly
 
-  # global_best = np.inf
-  # start_time = time.time()
+  global_best = np.inf
+  start_time = time.time()
 
-  # chunk = 1000 # define chunk lenght, if to small, the code won't take advantatge
-  #             # of vectorization, if it is too large, excessive memory usage will
-  #             # slow down execution, or Memory Error will be risen
-  # combinations = itertools.combinations(range(n),4) # generate iterator containing
-  #                                         # all possible combinations of 3 columns
-  # N = n*(n-1)*(n-2)*(n-3)//24 # number of combinations (length of combinations cannot be
-  #                     # retrieved because it is an iterator)
-  # # generate a list containing how many elements of combinations will be retrieved
-  # # per iteration
-  # n_chunks, remainder = divmod(N,chunk)
-  # counts_list = [chunk for _ in range(n_chunks)]
-  # if remainder:
-  #     counts_list.append(remainder)
+  chunk = 1000 # define chunk lenght, if to small, the code won't take advantatge
+              # of vectorization, if it is too large, excessive memory usage will
+              # slow down execution, or Memory Error will be risen
+  combinations = itertools.combinations(range(n),4) # generate iterator containing
+                                          # all possible combinations of 3 columns
+  N = n*(n-1)*(n-2)*(n-3)//24 # number of combinations (length of combinations cannot be
+                      # retrieved because it is an iterator)
+  # generate a list containing how many elements of combinations will be retrieved
+  # per iteration
+  n_chunks, remainder = divmod(N,chunk)
+  counts_list = [chunk for _ in range(n_chunks)]
+  if remainder:
+      counts_list.append(remainder)
 
-  # # Iterate one chunk at a time, using vectorized code to treat the chunk
-  # for counts in counts_list:
-  #     # retrieve combinations in current chunk
-  #     current_comb = np.fromiter(combinations,dtype='i,i,i,i',count=counts)\
-  #                     .view(('i',4))
-  #     chunk_best = A[current_comb].min(axis=1).max(axis=1) # maximum of element-wise
-  #                                                         # minimum in current chunk
-  #     ravel_save_row = chunk_best.argmin() # minimum of maximums in current chunk
-  #     # check if current chunk contains global minimum
-  #     if chunk_best[ravel_save_row] < global_best:
-  #         global_best = chunk_best[ravel_save_row]
-  #         save_rows = current_comb[ravel_save_row]
+  # Iterate one chunk at a time, using vectorized code to treat the chunk
+  for counts in counts_list:
+      # retrieve combinations in current chunk
+      current_comb = np.fromiter(combinations,dtype='i,i,i,i',count=counts)\
+                      .view(('i',4))
+      chunk_best = A[current_comb].min(axis=1).max(axis=1) # maximum of element-wise
+                                                          # minimum in current chunk
+      ravel_save_row = chunk_best.argmin() # minimum of maximums in current chunk
+      # check if current chunk contains global minimum
+      if chunk_best[ravel_save_row] < global_best:
+          global_best = chunk_best[ravel_save_row]
+          save_rows = current_comb[ravel_save_row]
 
-  # total_time = time.time()-start_time
+  total_time = time.time()-start_time
 
-  # print('chunked vectored')
-  # print(global_best, save_rows)
-  # print(total_time)
+  print('chunked vectored')
+  print(global_best, save_rows)
+  print(total_time)
 
 
   #Min and max library calls may be costly for only 3 values
