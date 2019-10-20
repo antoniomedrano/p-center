@@ -57,6 +57,9 @@ def Run_pCenter():
         diff, C = updateCoverCoefficeints(distMatrix, SDmin+.000001, C)
         # for u574.tsp, I had to add 1 to SDmin when p=387 so it wouldn't crash. Could probably add less.
         
+        for v in m.getVars():
+            v._prev = v.X
+        
         # update the right hand side of the facility constraint
         m.getConstrByName("c1").setAttr(GRB.Attr.RHS, p)
         for i in range(numDemands):
@@ -70,6 +73,9 @@ def Run_pCenter():
                 # remove it's associated balinski constraint
                 m.remove(m.getConstrByName("c3[%d,%d]" % (i,j)))
 
+        m.update()
+        for v in m.getVars():
+            v.Start = v._prev
         
         SolveModel(m)
         SDmin = m.objVal
