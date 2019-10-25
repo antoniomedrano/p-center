@@ -57,6 +57,7 @@ def Run_pCenter():
         diff, C = updateCoverCoefficeints(distMatrix, SDmin+.00001, C)
         # for u574.tsp, I had to add 1 to SDmin when p=387 so it wouldn't crash. Could probably add less.
         
+        # query the variables from the previous solution to perform an explicit warm start
         for v in m.getVars():
             v._prev = v.X
         
@@ -67,13 +68,12 @@ def Run_pCenter():
             for j in diff[i]:
                 # delete the variable from the model
                 m.remove(m.getVarByName("x[%d,%d]" % (i,j)))
-                # remove from the coverage and z constraints associated with the variable
-                # m.chgCoeff(m.getConstrByName("c2[%d]" % i), X[i,j], 0)
-                # m.chgCoeff(m.getConstrByName("c4[%d]" % i), X[i,j], 0)
+
                 # remove it's associated balinski constraint
                 m.remove(m.getConstrByName("c3[%d,%d]" % (i,j)))
 
         m.update()
+        # assign the starting variable values from the previous solution to do a warm start
         for v in m.getVars():
             v.Start = v._prev
         
@@ -102,8 +102,6 @@ def computeDistanceMatrix():
     
     # Pull out just the coordinates from the data
     xyPointArray = sites[:,[1,2]]
-    #A = [xyPointArray[i][:] for i in demandIDs]
-    #B = [xyPointArray[j][:] for j in siteIDs]
     A = xyPointArray
     B = A
     #print A
