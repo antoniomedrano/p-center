@@ -20,6 +20,16 @@ from scipy.spatial.distance import cdist
 from gurobipy import *
 setParam('OutputFlag', 0)   # mute solver meta-info
 
+threads = 0
+conc = 0
+
+threads = 4
+setParam(GRB.Param.Threads, threads)
+# conc = 0
+# setParam(GRB.Param.ConcurrentMIP, conc)
+# setParam(GRB.Param.MIPFocus, 1)
+# setParam(GRB.Param.MIPGap, 0.01)
+
 def Run_pCenter():
     
     """Example of complete p-Center program with the Gurobi API"""
@@ -41,13 +51,13 @@ def Run_pCenter():
     BuildModel(m, 2, distMatrix)
     
     print('  p, SD')
-    displaySolution(p, SDmin**0.5)
+    displaySolution(p, solution[p-1,1])
     
     p = 2
     SolveModel(m)
     SDmin = m.objVal
     solution[p-1,1] = SDmin**0.5
-    displaySolution(p, SDmin**0.5)
+    displaySolution(p, solution[p-1,1])
     
     for i in range(3, numSites):
         p = i
@@ -90,15 +100,12 @@ def Run_pCenter():
     total_time = time.time()-start_time
     
     print
-    print('Total problem solved in %f seconds' % total_time)
+    print('Problem solved in %f secs with %d threads and concurrency of %d' % (total_time, threads, conc))
     print
     #displaySolution(Y, p, SDmin, total_time)
     
     
 def computeDistanceMatrix():
-        
-    # Pull out just the site/demand IDs from the data
-    siteIDs = sites[:,0]
     
     # Pull out just the coordinates from the data
     xyPointArray = sites[:,[1,2]]
@@ -134,9 +141,7 @@ def updateCoverCoefficeints(distMatrix, SD_UB, B):
 
 
 def BuildModel(m, p, d):
-    
-    global X
-    
+        
     # DECLARE VARIABLES:
     # Assignment variables X
     # =1 if demand i is assigned to facility j

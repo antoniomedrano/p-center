@@ -20,11 +20,22 @@ from scipy.spatial.distance import cdist
 from gurobipy import *
 setParam('OutputFlag', 0)   # mute solver meta-info
 
+# this sets the number of concurrency and threads for parallel computation
+# default is 0
+threads = 0
+conc = 0
+
+#threads = 0
+#setParam(GRB.Param.Threads, threads)
+#conc = 0
+#setParam(GRB.Param.ConcurrentMIP, conc)
+
+
 def Run_pCenter():
     
     """Example of complete p-Center program with the Gurobi API"""
     m = Model()
-    
+
     start_time = time.time()
     
     distMatrix = computeDistanceMatrix()
@@ -35,11 +46,11 @@ def Run_pCenter():
     # p = 1 is a trivial solution min(max(dist))
     p = 1
     SDmin = np.amin(np.amax(distMatrix,0))
-    solution[p-1,1] = SDmin**0.5
+    solution[p-1,1] = SDmin**0.5    # math.sqrt is slightly faster, np.sqrt is very slower
     
     BuildModel(m, 0, distMatrix)
     print('  p, SD')
-    displaySolution(p, SDmin**0.5)
+    displaySolution(p, solution[p-1,1])
     
     for i in range(2, numSites):
 
@@ -51,7 +62,7 @@ def Run_pCenter():
         SDmin = m.objVal
         solution[p-1,1] = SDmin**0.5
         
-        displaySolution(p, SDmin**0.5)
+        displaySolution(p, solution[p-1,1])
     
     # solution for p = numSites is SDmin = 0    
     solution[numSites-1,1] = 0
@@ -60,18 +71,12 @@ def Run_pCenter():
     total_time = time.time()-start_time
     
     print
-    print('Total problem solved in %f seconds' % total_time)
+    print('Problem solved in %f secs with %d threads and concurrency of %d' % (total_time, threads, conc))
     print
     #displaySolution(Y, p, SDmin, total_time)
     
     
 def computeDistanceMatrix():
-        
-    #declare a couple variables
-    global siteIDs
-    
-    # Pull out just the site/demand IDs from the data
-    siteIDs = sites[:,0]
     
     # Pull out just the coordinates from the data
     xyPointArray = sites[:,[1,2]]
@@ -171,7 +176,7 @@ def read_problem(file):
     
     #plot.plotData(sites)
     
-    print('%d locations' % numSites)
+    print('%d locations, %d threads'% (numSites,threads))
     print()
 
 
