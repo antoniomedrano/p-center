@@ -22,10 +22,21 @@ from scipy.spatial.distance import cdist
 from gurobipy import *
 setParam('OutputFlag', 0)   # mute solver meta-info
 
+# this sets the number of threads for parallel computation
+threads = 0
+conc = 0
+# setParam(GRB.Param.Threads, threads)
+# threads = 0
+# setParam(GRB.Param.ConcurrentMIP, conc)
+#conc = 0
+# setParam(GRB.Param.MIPFocus, 1)
+# setParam(GRB.Param.MIPGap, 0.01)
+
 def Run_pCenter(p):
     
     """ Example of simple p-Center program with the Gurobi Python API"""
     m = Model()    
+    # m.Params.SolutionLimit = 4
     
     start_time = time.time()
     
@@ -33,7 +44,7 @@ def Run_pCenter(p):
     #print distMatrix
 
     BuildModel(m, p, distMatrix)
-    
+
     SolveModel(m)
     
     total_time = time.time()-start_time
@@ -44,10 +55,6 @@ def Run_pCenter(p):
 def computeDistanceMatrix():
         
     #declare a couple variables
-    global distances
-    global Nrows
-    global Ncols
-    global Nsize
     global siteIDs
     
     # Pull out just the site/demand IDs from the data
@@ -119,7 +126,7 @@ def SolveModel(m):
     
 def displaySolution(m, p, total_time):
 
-    print('Total problem solved in %f seconds' % total_time)
+    print('Problem solved in %f secs with %d threads and concurrency of %d' % (total_time, threads, conc))
     print()
     # The objective value of the solution.
     print('p = %d' % p)
