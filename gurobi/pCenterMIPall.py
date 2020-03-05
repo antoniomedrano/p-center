@@ -25,7 +25,7 @@ setParam('OutputFlag', 0)   # mute solver meta-info
 threads = 0
 conc = 0
 
-#threads = 0
+#threads = 6
 #setParam(GRB.Param.Threads, threads)
 #conc = 0
 #setParam(GRB.Param.ConcurrentMIP, conc)

@@ -23,12 +23,10 @@ setParam('OutputFlag', 0)   # mute solver meta-info
 threads = 0
 conc = 0
 
-threads = 4
-setParam(GRB.Param.Threads, threads)
+# threads = 4
+# setParam(GRB.Param.Threads, threads)
 # conc = 0
-# setParam(GRB.Param.ConcurrentMIP, conc)
-# setParam(GRB.Param.MIPFocus, 1)
-# setParam(GRB.Param.MIPGap, 0.01)
+# setParam(GRB.Param.ConcurrentMIP, conc)   
 
 def Run_pCenter():
     
@@ -65,8 +63,10 @@ def Run_pCenter():
         # find the difference in the coverage matrix from p=i+1 to p=i
         # add a small amount to avoid issues with numerical truncation
         diff, C = updateCoverCoefficeints(distMatrix, SDmin+.00001, C)
-        # for u574.tsp, I had to add 1 to SDmin when p=387 so it wouldn't crash. Could probably add less.
-        
+
+        # for u574.tsp, I had to add 0.1 to SDmin so it wouldn't crash. Could probably add less.
+        #diff, C = updateCoverCoefficeints(distMatrix, SDmin + 0.001, C)
+ 
         # query the variables from the previous solution to perform an explicit warm start
         for v in m.getVars():
             v._prev = v.X
