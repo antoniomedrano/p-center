@@ -25,7 +25,7 @@ setParam('OutputFlag', 0)   # mute solver meta-info
 threads = 0
 conc = 0
 
-#threads = 6
+#threads = 1
 #setParam(GRB.Param.Threads, threads)
 #conc = 0
 #setParam(GRB.Param.ConcurrentMIP, conc)
@@ -73,7 +73,6 @@ def Run_pCenter():
     print
     print('Problem solved in %f secs with %d threads and concurrency of %d' % (total_time, threads, conc))
     print
-    #displaySolution(Y, p, SDmin, total_time)
     
     
 def computeDistanceMatrix():
@@ -181,11 +180,11 @@ def read_problem(file):
 
 
 def main(unused_argv):
-    print('---- Complete P-Center with Gurobi -----')
+    print('---- CPC-MIP with Gurobi -----')
     Run_pCenter()
 
 
-""" Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
+""" Main will take in 1 argument: Data to Use  """
 if __name__ == '__main__':
   if len(sys.argv) > 1 and len(sys.argv) <= 2:
     file = '../data/' + sys.argv[1]
@@ -198,5 +197,5 @@ if __name__ == '__main__':
     read_problem(file)
     main(None)
   else:
-    print("Please Pass: Service Distance; Data to Use")
+    print("Please Pass: Data to Use")
     print("Problem not executed!")
