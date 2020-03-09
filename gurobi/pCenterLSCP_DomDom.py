@@ -32,7 +32,7 @@ def Run_pCenterLSCP():
     sqDistances, sqDistMatrix = computeDistances()
     
     # p = numSites, SD = 0 is a trivial solution
-    print '  p, SD'
+    print('  p, SD')
     p = numSites
     SDsquared = 0   
     displaySolution(p, SDsquared)
@@ -87,10 +87,10 @@ def Run_pCenterLSCP():
         
     total_time = time.time()-start_time
     #print solution
-    print
-    print '%d LSCP distances evaluated' % iters
-    print 'Total problem solved in %f seconds' % total_time
-    print
+    print()
+    print('%d LSCP distances evaluated' % iters)
+    print('Total problem solved in %f seconds' % total_time)
+    print()
     #plot.plotTradeoff(solution)
     
 
@@ -272,7 +272,7 @@ def SolveModel(m):
     
 def displaySolution(p, SDsquared):
     # The objective value and the minimum service distance
-    print '%3d, %f' % (p, SDsquared**0.5)
+    print('%3d, %f' % (p, SDsquared**0.5))
     
             
 def read_problem(file):
@@ -286,13 +286,13 @@ def read_problem(file):
         elif (file[-3:].lower() == "tsp"):
             sites = readDataFiles.readTSP(file)
     except IOError:
-        print 'Error reading file'
+        print('Error reading file')
         raise
         
     numSites = sites.shape[0]    
     numDemands = numSites
     # plot.plotData(sites)    
-    print '%d locations' % numSites
+    print('%d locations' % numSites)
 
 
 def main(unused_argv):
@@ -304,16 +304,16 @@ def main(unused_argv):
 if __name__ == '__main__':
   if len(sys.argv) > 1 and len(sys.argv) <= 2:
     file = '../data/' + sys.argv[1]
-    print
-    print "Problem instance from: ", file
+    print()
+    print("Problem instance from: ", file)
     read_problem(file)
     main(None)
   elif len(sys.argv) > 0 and len(sys.argv) <= 1:
     file = '../data/swain.dat'
-    print
-    print "Problem instance from: ", file
+    print()
+    print("Problem instance from: ", file)
     read_problem(file)
     main(None)
   else:
-    print "Please Pass: Service Distance; Data to Use"
-    print "Problem not executed!"
+    print("Please Pass: Service Distance; Data to Use")
+    print("Problem not executed!")

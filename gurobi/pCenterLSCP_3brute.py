@@ -118,7 +118,6 @@ def Run_pCenterLSCP():
     print('%d LSCP distances evaluated' % iters)
     print('Total problem solved in %f seconds' % total_time)
     print()
-    #plot.plotTradeoff(file, solution)
     
 def computeDistances():
     
@@ -219,7 +218,7 @@ def main(unused_argv):
     Run_pCenterLSCP()
 
 
-""" Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
+""" Main will take in 2 argument: Data to Use  """
 if __name__ == '__main__':
   if len(sys.argv) > 1 and len(sys.argv) <= 2:
     file = '../data/' + sys.argv[1]
@@ -234,5 +233,5 @@ if __name__ == '__main__':
     read_problem(file)
     main('swain.dat')
   else:
-    print("Please Pass: Service Distance; Data to Use")
+    print("Please Pass: Data to Use")
     print("Problem not executed!")

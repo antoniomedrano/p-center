@@ -23,12 +23,10 @@ setParam('OutputFlag', 0)   # mute solver meta-info
 threads = 0
 conc = 0
 
-threads = 4
+threads = 6
 setParam(GRB.Param.Threads, threads)
 # conc = 0
-# setParam(GRB.Param.ConcurrentMIP, conc)
-# setParam(GRB.Param.MIPFocus, 1)
-# setParam(GRB.Param.MIPGap, 0.01)
+# setParam(GRB.Param.ConcurrentMIP, conc)   
 
 def Run_pCenter():
     
@@ -65,8 +63,12 @@ def Run_pCenter():
         # find the difference in the coverage matrix from p=i+1 to p=i
         # add a small amount to avoid issues with numerical truncation
         diff, C = updateCoverCoefficeints(distMatrix, SDmin+.00001, C)
-        # for u574.tsp, I had to add 1 to SDmin when p=387 so it wouldn't crash. Could probably add less.
-        
+
+        # for u574 and pr439, I had to add 0.001 to SDmin so it wouldn't crash.
+        # 0.0001 crashes at p=282, could maybe add a bit more just then but I don't like that.
+        # diff, C = updateCoverCoefficeints(distMatrix, SDmin + 0.001, C) #u574 maybe add less
+        # diff, C = updateCoverCoefficeints(distMatrix, SDmin + 0.05, C) #pr439
+ 
         # query the variables from the previous solution to perform an explicit warm start
         for v in m.getVars():
             v._prev = v.X
@@ -102,7 +104,6 @@ def Run_pCenter():
     print
     print('Problem solved in %f secs with %d threads and concurrency of %d' % (total_time, threads, conc))
     print
-    #displaySolution(Y, p, SDmin, total_time)
     
     
 def computeDistanceMatrix():
@@ -221,11 +222,11 @@ def read_problem(file):
 
 
 def main(unused_argv):
-    print('---- Complete P-Center with Gurobi -----')
+    print('---- CPC-MIPUB with Gurobi -----')
     Run_pCenter()
 
 
-""" Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
+""" Main will take in 1 argument: Data to Use  """
 if __name__ == '__main__':
   if len(sys.argv) > 1 and len(sys.argv) <= 2:
     file = '../data/' + sys.argv[1]
@@ -238,5 +239,5 @@ if __name__ == '__main__':
     read_problem(file)
     main(None)
   else:
-    print("Please Pass: Service Distance; Data to Use")
+    print("Please Pass: Data to Use")
     print("Problem not executed!")
