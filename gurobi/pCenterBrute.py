@@ -87,7 +87,8 @@ def nbParallel2(A, n):
   rows=np.empty((2),dtype=np.uint64)
   save_rows=np.empty((n,2),dtype=np.uint64)
   global_best_Temp=np.empty((n),dtype=A.dtype)
-  global_best_Temp[:]=np.inf
+  # global_best_Temp[:]=abs(np.inf)     // doesn't work with integer A matrix input
+  global_best_Temp[:] = 999999999999999
 
   for i in range(n-1):
       for j in nb.prange(i+1, n):
@@ -192,7 +193,8 @@ def nbParallel3(A, n):
   rows=np.empty((3),dtype=np.uint64)
   save_rows=np.empty((n,3),dtype=np.uint64)
   global_best_Temp=np.empty((n),dtype=A.dtype)
-  global_best_Temp[:]=np.inf
+  # global_best_Temp[:]=abs(np.inf)     // doesn't work with integer A matrix input
+  global_best_Temp[:] = 999999999999999
 
   for i in range(n-2):
       for j in nb.prange(i+1, n-1):
@@ -216,6 +218,7 @@ def nbParallel3(A, n):
           global_best_Temp[j]=global_best
 
       ind=np.argmin(global_best_Temp)
+
       if (global_best_Temp[ind]<all_global_best):
           # rows=save_rows[ind,:]
           rows[0] = save_rows[ind,0]
