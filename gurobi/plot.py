@@ -34,7 +34,7 @@ def plotSolution(sites, X, cols, SD):
     plt.plot(sites[:,1], sites[:,2], 'ko', markersize = mSize)
     numSites = len(X)
     for j in range(numSites):
-        if (X[j].SolutionValue() == 1.0):
+        if (X[j].x == 1.0):
             plt.plot(sites[cols[j],1], sites[cols[j],2], 'bo', markersize = mSize)
             circle = plt.Circle((sites[cols[j],1], sites[cols[j],2]), SD, color='b', fill=False)
             plt.gcf().gca().add_artist(circle)

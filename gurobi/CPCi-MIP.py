@@ -52,9 +52,8 @@ def Run_pCenter():
     print('  p, SD')
     displaySolution(p, solution[p-1,1])
     
-    for i in range(2, numSites):
+    for p in range(2, numSites):
 
-        p = i
         # update the right hand side of the facility constraint
         m.getConstrByName("c1").setAttr(GRB.Attr.RHS, p)
         
