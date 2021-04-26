@@ -1,4 +1,4 @@
-# Copyright 2019 Antonio Medrano
+# Copyright 2021 Antonio Medrano
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Author: Antonio Medrano
+# Author: F. Antonio Medrano
 
 import sys
 import time
@@ -28,7 +28,7 @@ conc = 0
 # setParam(GRB.Param.Threads, threads)
 # threads = 0
 # setParam(GRB.Param.ConcurrentMIP, conc)
-#conc = 0
+# conc = 0
 # setParam(GRB.Param.MIPFocus, 1)
 # setParam(GRB.Param.MIPGap, 0.01)
 
@@ -171,7 +171,7 @@ def main(unused_argv):
     Run_pCenter(p)
 
 
-""" Main will take in 3 arguments: p-Facilities; ServiceDistance; Data to Use  """
+""" Main will take in 2 arguments: p-Facilities; Data to Use  """
 if __name__ == '__main__':
   if len(sys.argv) > 2 and len(sys.argv) <= 3:
     file = '../data/' + sys.argv[2]
@@ -186,5 +186,5 @@ if __name__ == '__main__':
     read_problem(file)
     main(None)
   else:
-    print("Please Pass: Service Distance; Data to Use")
+    print("Please Pass: number of facilities; Data to Use")
     print("Problem not executed!")
