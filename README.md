@@ -11,3 +11,5 @@ Gurobi tested with Python 3.7.4
 OR-Tools originally developted with Python 2, should be mostly converted to Python 3 now.  
 *update contributions are welcome*  
 
+## References  
+1. Medrano, F.A. (2020). The Complete Vertex p-Center Problem. *EURO Journal on Computational Optimization*, 8, pp. 327–343, DOI: https://doi.org/10.1007/s13675-020-00131-y
