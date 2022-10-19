@@ -8,7 +8,7 @@ This repository contains various codes for solving the complete *p*-center probl
 [Google OR-Tools](https://developers.google.com/optimization/): last tested with v5.0  
 [Fico Xpress](https://www.fico.com/en/products/fico-xpress-optimization): last tested with v7.8  
 Gurobi tested with Python 3.7.4  
-OR-Tools originally developted with Python 2, should be mostly converted to Python 3 now.  
+OR-Tools was originally developted with Python 2, code should be mostly converted to Python 3 now.  
 *update contributions are welcome*  
 
 ## References  
