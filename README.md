@@ -1,6 +1,6 @@
 # The Complete *p*-Center Problem  
 ## Contents  
-This repository contains various codes for solving the complete *p*-center problem using Gurobi with Python and Numba when doing brute-force enumeration. There are also less up-to-date codes for Xpress Optimizer and Google OR-Tools, but we strongly recommend using the Gurobi codes as they are the most up-to-date. The 55-point Swain and TSP library data sets are also included.  
+This repository contains various codes for solving the complete *p*-center problem using Gurobi with Python and Numba using the methods found in Medrano (2020). There are also less up-to-date codes for Xpress Optimizer and Google OR-Tools, but we strongly recommend using the Gurobi codes as they are the most up-to-date. The 55-point Swain and TSP library data sets are also included.  
   
 **Requirements**  
 [Gurobi](https://www.gurobi.com/): last tested with v8.1.1  
