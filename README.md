@@ -8,6 +8,8 @@ This repository contains various codes for solving the complete *p*-center probl
 [Google OR-Tools](https://developers.google.com/optimization/): last tested with v5.0  
 [Fico Xpress](https://www.fico.com/en/products/fico-xpress-optimization): last tested with v7.8  
 Gurobi tested with Python 3.7.4  
-OR-Tools originally developted with Python 2, should be mostly converted to Python 3 now.  
+OR-Tools was originally developted with Python 2, code should be mostly converted to Python 3 now.  
 *update contributions are welcome*  
 
+## References  
+1. Medrano, F.A. (2020). The Complete Vertex p-Center Problem. *EURO Journal on Computational Optimization*, 8, pp. 327–343. https://doi.org/10.1007/s13675-020-00131-y
